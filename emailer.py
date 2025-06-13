@@ -7,6 +7,7 @@ def send_email(filepath, user, password):
     msg["From"] = user
     msg["To"] = user
     msg.set_content("Attached is your weekly Zillow report.")
+    
     with open(filepath, "rb") as f:
           msg.add_attachment(
             f.read(),
