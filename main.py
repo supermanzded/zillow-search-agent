@@ -9,8 +9,6 @@ def job():
     filepath = generate_excel_report(listings)
     send_email(filepath)
 
-schedule.every().tuesday.at("09:30").do(job)
-
 if __name__ == "__main__":
-    while True:
-        schedule.run_pending()
+    # Run the job immediately for testing
+    job()
