@@ -1,3 +1,10 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+EMAIL_USER = os.getenv("GMAIL_USER")
+EMAIL_PASS = os.getenv("GMAIL_PASS")
 import schedule
 from zillow import ZillowClient
 from report import generate_excel_report
