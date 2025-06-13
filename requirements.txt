@@ -1,0 +1,4 @@
+schedule
+pandas
+openpyxl
+python-dotenv
