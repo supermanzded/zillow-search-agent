@@ -32,7 +32,8 @@ def job():
     send_email(filepath, EMAIL_USER, EMAIL_PASS)
     print("Email sent successfully.")
 
-if __name__ == "__main__":
-    print("Running Zillow report job now...")
-    job()
-    print("Zillow job completed.")
+   if __name__ == "__main__":
+    schedule.every().tuesday.at("09:30").do(job)
+
+    while True:
+        schedule.run_pending()
