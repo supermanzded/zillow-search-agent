@@ -20,7 +20,7 @@ def job():
     client = ZillowClient()
     print("ZillowClient initialized.")
 
-    listings = client.search_properties()
+    listings = [{"address": "123 Test St", "price": "$123,456"}]
     print(f"Found {len(listings)} listings.")
 
     filepath = generate_excel_report(listings)
