@@ -1,0 +1,3 @@
+git add .
+git commit -m "Switched from test to live Zillow data and set to weekly schedule"
+git push origin main
