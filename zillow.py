@@ -14,7 +14,6 @@ class ZillowClient:
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
 
-        driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
 
         # Load Sebring, FL multi-family properties
         url = "https://www.zillow.com/sebring-fl/multi-family_att/"
