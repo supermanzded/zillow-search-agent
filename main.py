@@ -1,10 +1,13 @@
 import os
 from dotenv import load_dotenv
 
+print("Loading environment...")
 load_dotenv()
 
 EMAIL_USER = os.getenv("GMAIL_USER")
 EMAIL_PASS = os.getenv("GMAIL_PASS")
+
+print("Email credentials loaded.")
 
 import schedule
 from zillow import ZillowClient
@@ -12,12 +15,21 @@ from report import generate_excel_report
 from emailer import send_email
 
 def job():
+    print("Starting Zillow job...")
+
     client = ZillowClient()
+    print("ZillowClient initialized.")
+
     listings = client.search_properties()
+    print(f"Found {len(listings)} listings.")
+
     filepath = generate_excel_report(listings)
-    send_email(filepath, EMAIL_USER, EMAIL_PASS)  # ✅ Pass the credentials here
+    print(f"Report generated: {filepath}")
+
+    send_email(filepath, EMAIL_USER, EMAIL_PASS)
+    print("Email sent successfully.")
 
 if __name__ == "__main__":
-    print("Job started")
+    print("Running Zillow report job now...")
     job()
-    print("Job finished")
+    print("Zillow job completed.")
