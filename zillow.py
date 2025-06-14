@@ -1,12 +1,12 @@
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 from webdriver_manager.chrome import ChromeDriverManager
 import time
 
 class ZillowClient:
     def search_properties(self):
-        options = options()
+        options = Options()
         options.add_argument("--headless")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
@@ -36,7 +36,5 @@ class ZillowClient:
                 })
             except Exception:
                 continue
-
-        return listings
 
         return listings
