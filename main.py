@@ -18,5 +18,6 @@ def job():
     send_email(filepath, EMAIL_USER, EMAIL_PASS)  # ✅ Pass the credentials here
 
 if __name__ == "__main__":
-    # Run the job immediately for testing
+    print("Job started")
     job()
+    print("Job finished")
