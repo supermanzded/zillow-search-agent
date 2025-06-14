@@ -1,24 +1,27 @@
-name: Weekly Zillow Search
+name: Run Zillow Report Once
 
 on:
-  schedule:
-    - cron: '30 13 * * 2'  # Every Tuesday at 9:30am EST
-  workflow_dispatch:
+  workflow_dispatch:  # Allows you to trigger manually
+  push:               # Or when code is pushed to main branch
+    branches:
+      - main
 
 jobs:
-  run-script:
+  run-report:
     runs-on: ubuntu-latest
+    env:
+      GMAIL_USER: ${{ secrets.GMAIL_USER }}
+      GMAIL_PASS: ${{ secrets.GMAIL_PASS }}
     steps:
       - uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
+
       - name: Run main.py
-        env:
-          GMAIL_USER: ${{ secrets.GMAIL_USER }}
-          GMAIL_PASS: ${{ secrets.GMAIL_PASS }}
         run: python main.py
