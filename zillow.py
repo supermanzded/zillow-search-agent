@@ -38,3 +38,5 @@ class ZillowClient:
                 continue
 
         return listings
+
+        return listings
