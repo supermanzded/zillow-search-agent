@@ -1,3 +1,4 @@
+print("Starting Main")
 import os
 from dotenv import load_dotenv
 
