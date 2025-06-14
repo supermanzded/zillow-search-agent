@@ -6,7 +6,7 @@ import time
 
 class ZillowClient:
     def search_properties(self):
-        options = Options()
+        options = options()
         options.add_argument("--headless")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
