@@ -1,9 +1,8 @@
-import selenium.webdriver.chrome.webdriver
 from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
-from webdriver_manager.chrome import ChromeDriverManager
 import time
 
 class ZillowClient:
@@ -13,7 +12,8 @@ class ZillowClient:
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-
+        
+        driver = webdriver.Chrome(options=options)
 
         # Load Sebring, FL multi-family properties
         url = "https://www.zillow.com/sebring-fl/multi-family_att/"
