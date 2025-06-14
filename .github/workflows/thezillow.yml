@@ -1,8 +1,10 @@
-name: Run Zillow Report Once
+name: Weekly Zillow Report
 
 on:
-  workflow_dispatch:  # Allows you to trigger manually
-  push:               # Or when code is pushed to main branch
+  schedule:
+    - cron: '30 13 * * 2'  # Every Tuesday at 9:30 AM ET (13:30 UTC)
+  workflow_dispatch:        # Allows manual triggering
+  push:                     # Also runs when you push to main
     branches:
       - main
 
@@ -12,8 +14,10 @@ jobs:
     env:
       GMAIL_USER: ${{ secrets.GMAIL_USER }}
       GMAIL_PASS: ${{ secrets.GMAIL_PASS }}
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Check out repository
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
