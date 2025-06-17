@@ -23,13 +23,12 @@ def job():
     listings = client.search_properties()
     print(f"Retrieved {len(listings)} listings.")
 
-   filepath = generate_excel_report(listings)
-if filepath:
-    send_email(filepath, EMAIL_USER, EMAIL_PASS)
-    print("Email sent successfully.")
-else:
-    print("No email sent — no data to report.")
-
+    filepath = generate_excel_report(listings)
+    if filepath:
+        send_email(filepath, EMAIL_USER, EMAIL_PASS)
+        print("Email sent successfully.")
+    else:
+        print("No email sent — no data to report.")
 
 if __name__ == "__main__":
     print("Scheduling Zillow job for every Tuesday at 09:30 AM...")
