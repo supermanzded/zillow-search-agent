@@ -1,5 +1,3 @@
-# zillow.py
-
 import os
 import shutil
 import time
@@ -32,7 +30,6 @@ class ZillowClient:
         print(f"Starting ChromeDriver at {time.strftime('%X')}")
         chromedriver_path = ChromeDriverManager().install()
         if not chromedriver_path.endswith("chromedriver") and "chromedriver" in chromedriver_path:
-            # Try to reconstruct the correct path (should end with 'chromedriver', not any other file)
             chromedriver_dir = os.path.dirname(chromedriver_path)
             possible_driver = os.path.join(chromedriver_dir, "chromedriver")
             if os.path.exists(possible_driver):
