@@ -35,8 +35,8 @@ class ZillowClient:
             # Try to reconstruct the correct path (should end with 'chromedriver', not any other file)
             chromedriver_dir = os.path.dirname(chromedriver_path)
             possible_driver = os.path.join(chromedriver_dir, "chromedriver")
-        if os.path.exists(possible_driver):
-        chromedriver_path = possible_driver
+            if os.path.exists(possible_driver):
+                chromedriver_path = possible_driver
 
         driver = webdriver.Chrome(service=Service(chromedriver_path), options=options)
         print(f"ChromeDriver started in {time.time() - start:.2f}s")
