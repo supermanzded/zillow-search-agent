@@ -1,6 +1,7 @@
 import os
 import shutil
 import time
+from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -29,6 +30,20 @@ class ZillowClient:
 
         print(f"Starting ChromeDriver at {time.strftime('%X')}")
         chromedriver_path = ChromeDriverManager().install()
+        print("ChromeDriverManager returned:", chromedriver_path)
+
+        # Ensure we use the actual binary, not a file like THIRD_PARTY_NOTICES.chromedriver
+        bin_path = Path(chromedriver_path)
+        if bin_path.name != "chromedriver":
+            real_bin = bin_path.parent / "chromedriver"
+            if real_bin.exists():
+                chromedriver_path = str(real_bin)
+                print("Corrected to actual binary:", chromedriver_path)
+            else:
+                raise FileNotFoundError("Could not find actual chromedriver binary!")
+
+        os.chmod(chromedriver_path, 0o755)  # Ensure it's executable
+
         driver = webdriver.Chrome(service=Service(chromedriver_path), options=options)
         print(f"ChromeDriver started in {time.time() - start:.2f}s")
 
