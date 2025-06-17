@@ -1,5 +1,8 @@
 # zillow.py
 
+import os
+import shutil
+import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -8,10 +11,16 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
-import time
+
+def clear_wdm_cache():
+    wdm_cache_dir = os.path.expanduser("~/.wdm")
+    if os.path.exists(wdm_cache_dir):
+        shutil.rmtree(wdm_cache_dir)
+        print("webdriver-manager cache cleared.")
 
 class ZillowClient:
     def search_properties(self):
+        clear_wdm_cache()
         start = time.time()
         url = "https://www.zillow.com/sebring-fl/multi-family/2-_beds/1-_baths/200000-400000_price/105.0-mile_radius/central-ac/"
         
@@ -56,4 +65,3 @@ class ZillowClient:
 
         print(f"Extracted {len(listings)} listings in {time.time() - start:.2f}s")
         return listings
-
