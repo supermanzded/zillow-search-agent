@@ -17,8 +17,11 @@ class ZillowClient:
         options.add_argument("--disable-extensions")
         options.add_argument("--remote-debugging-port=9222")
 
-        # Force fresh driver download every time
-        service = Service(ChromeDriverManager().install())
+        # Get the chromedriver executable path (should be exact driver binary)
+        driver_path = ChromeDriverManager().install()
+        print(f"[DEBUG] Chromedriver executable path: {driver_path}")
+
+        service = Service(driver_path)
         driver = webdriver.Chrome(service=service, options=options)
 
         url = "https://www.zillow.com/sebring-fl/multi-family_att/"
@@ -49,3 +52,4 @@ class ZillowClient:
                 continue
 
         return listings
+
