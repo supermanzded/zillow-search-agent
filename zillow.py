@@ -43,4 +43,14 @@ class ZillowClient:
 
         for card in soup.select("article"):
             try:
-                address = card.select_one("address").text.strip(_
+                address = card.select_one("address").text.strip()
+                price = card.select_one("span[data-test='property-card-price']").text.strip()
+                listings.append({
+                    "address": address,
+                    "price": price,
+                    "units": "N/A"
+                })
+            except Exception:
+                continue
+
+        return listings
