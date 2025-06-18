@@ -37,7 +37,11 @@ if __name__ == "__main__":
     # Run once immediately for test/debug
     job()
 
-    # Scheduler loop
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
+    # Only enter infinite loop if NOT running inside GitHub Actions
+    if os.getenv("GITHUB_ACTIONS") != "true":
+        print("Starting local schedule loop...")
+        while True:
+            schedule.run_pending()
+            time.sleep(60)
+    else:
+        print("Detected GitHub Actions environment — skipping loop.")
