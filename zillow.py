@@ -6,6 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from webdriver_manager.chrome import ChromeDriverManager
+import os
 
 class ZillowClient:
     def search_properties(self):
@@ -17,9 +18,10 @@ class ZillowClient:
         options.add_argument("--disable-extensions")
         options.add_argument("--remote-debugging-port=9222")
 
-        # Get the chromedriver executable path (should be exact driver binary)
-        driver_path = ChromeDriverManager().install()
-        print(f"[DEBUG] Chromedriver executable path: {driver_path}")
+        # Install chromedriver and correct the path to the actual binary
+        driver_folder = ChromeDriverManager().install()
+        driver_path = os.path.join(driver_folder, "chromedriver")
+        print(f"[DEBUG] Fixed chromedriver path: {driver_path}")
 
         service = Service(driver_path)
         driver = webdriver.Chrome(service=service, options=options)
@@ -41,15 +43,4 @@ class ZillowClient:
 
         for card in soup.select("article"):
             try:
-                address = card.select_one("address").text.strip()
-                price = card.select_one("span[data-test='property-card-price']").text.strip()
-                listings.append({
-                    "address": address,
-                    "price": price,
-                    "units": "N/A"
-                })
-            except Exception:
-                continue
-
-        return listings
-
+                address = card.select_one("address").text.strip(_
