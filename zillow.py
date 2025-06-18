@@ -1,8 +1,10 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from webdriver_manager.chrome import ChromeDriverManager
-import time
 
 class ZillowClient:
     def search_properties(self):
@@ -14,11 +16,16 @@ class ZillowClient:
 
         driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
 
-        # Load Sebring, FL multi-family properties
         url = "https://www.zillow.com/sebring-fl/multi-family_att/"
         driver.get(url)
 
-        time.sleep(5)  # Wait for JS to load content
+        try:
+            # Wait up to 15 seconds for at least one listing card to load
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "article"))
+            )
+        except Exception as e:
+            print("Timeout waiting for listings to load:", e)
 
         soup = BeautifulSoup(driver.page_source, "html.parser")
         driver.quit()
@@ -27,19 +34,15 @@ class ZillowClient:
 
         for card in soup.select("article"):
             try:
-                address = card.select_one("address").text
-                price = card.select_one("span[data-test='property-card-price']").text
+                address = card.select_one("address").text.strip()
+                price = card.select_one("span[data-test='property-card-price']").text.strip()
                 listings.append({
                     "address": address,
                     "price": price,
-                    "units": "N/A"  # Unit count not directly available
+                    "units": "N/A"
                 })
             except Exception:
                 continue
 
         return listings
 
-            except Exception:
-                continue
-
-        return listings
