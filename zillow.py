@@ -18,7 +18,7 @@ class ZillowClient:
         options.add_argument("--remote-debugging-port=9222")
 
         # Force fresh driver download every time
-        service = Service(ChromeDriverManager(cache_valid_range=0).install())
+        service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
 
         url = "https://www.zillow.com/sebring-fl/multi-family_att/"
