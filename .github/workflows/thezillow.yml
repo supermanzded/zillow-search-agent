@@ -3,8 +3,8 @@ name: Weekly Zillow Report
 on:
   schedule:
     - cron: '15 00 * * 3'  # Every Tuesday at 9:30 AM ET (13:30 UTC)
-  workflow_dispatch:        # Allows manual triggering
-  push:                     # Also runs when you push to main
+  workflow_dispatch:
+  push:
     branches:
       - main
 
@@ -26,5 +26,15 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Install Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg2
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
       - name: Run main.py
         run: python main.py
