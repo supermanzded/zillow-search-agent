@@ -15,16 +15,13 @@ class ZillowClient:
         print("Starting property search...")
 
         options = Options()
-        options.add_argument("--headless=new")  # Headless for GitHub Actions
+        options.add_argument("--headless=new")  # Recommended for CI
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
 
-        # Correctly resolve actual ChromeDriver binary path
-        driver_dir = ChromeDriverManager().install()
-        if driver_dir.endswith(".chromedriver"):  # Incorrect target, fix path
-            driver_path = str(Path(driver_dir).parent / "chromedriver")
-        else:
-            driver_path = driver_dir
+        # Fix for GitHub Actions: point to actual driver binary
+        raw_path = ChromeDriverManager().install()
+        driver_path = str(Path(raw_path).parent / "chromedriver")  # Fix: use actual binary
 
         service = Service(driver_path)
         driver = webdriver.Chrome(service=service, options=options)
@@ -44,10 +41,10 @@ class ZillowClient:
                     listings.append({
                         "address": address,
                         "price": price,
-                        "units": "N/A"  # You can try to extract more unit info if needed
+                        "units": "N/A"
                     })
-                except Exception as e:
-                    print("Skipping one listing due to missing data.")
+                except Exception:
+                    continue
 
             print(f"Found {len(listings)} properties.")
             return listings
