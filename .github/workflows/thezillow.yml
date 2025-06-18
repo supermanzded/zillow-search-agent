@@ -2,7 +2,7 @@ name: Weekly Zillow Report
 
 on:
   schedule:
-    - cron: '30 13 * * 2'  # Every Tuesday at 9:30 AM ET (13:30 UTC)
+    - cron: '15 00 * * 3'  # Every Tuesday at 9:30 AM ET (13:30 UTC)
   workflow_dispatch:        # Allows manual triggering
   push:                     # Also runs when you push to main
     branches:
