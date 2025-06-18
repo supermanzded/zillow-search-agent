@@ -31,20 +31,24 @@ class ZillowClient:
         driver = webdriver.Chrome(service=service, options=options)
 
         try:
-            # 🧭 Zillow search URL with all filters applied
+            # Zillow search URL with all filters
             url = "https://www.zillow.com/sebring-fl/multi-family/2-_beds/1-_baths/200000-400000_price/105.0-mile_radius/central-ac/"
             driver.get(url)
 
-            # ✅ Wait until listings are rendered
-            WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "ul.photo-cards li article"))
-            )
+            # Wait for listings or empty state
+            try:
+                WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "[data-test='property-card']"))
+                )
+            except:
+                print("⚠️ Timeout: No listings found or Zillow changed layout.")
+                return []
 
             print("Page loaded. Parsing...")
             soup = BeautifulSoup(driver.page_source, "html.parser")
             listings = []
 
-            for card in soup.select("ul.photo-cards li article"):
+            for card in soup.select("[data-test='property-card']"):
                 try:
                     address = card.select_one("address")
                     price = card.select_one("span[data-test='property-card-price']")
@@ -54,10 +58,11 @@ class ZillowClient:
                         "price": price.text.strip() if price else "N/A",
                         "units": "N/A"
                     })
-                except Exception:
+                except Exception as e:
+                    print(f"⚠️ Error parsing card: {e}")
                     continue
 
-            print(f"Found {len(listings)} properties.")
+            print(f"✅ Found {len(listings)} properties.")
             return listings
 
         finally:
