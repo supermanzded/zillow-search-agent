@@ -1,5 +1,4 @@
 import os
-import time
 from pathlib import Path
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -9,6 +8,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+import time
+
 
 class ZillowClient:
     def __init__(self):
@@ -18,11 +19,12 @@ class ZillowClient:
         print("Starting property search...")
 
         options = Options()
-        options.add_argument("--headless=new")  # Headless mode for CI environments
+        options.add_argument("--headless=new")  # For GitHub Actions
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
 
-        # Install ChromeDriver and set permissions
         raw_path = ChromeDriverManager().install()
         driver_path = Path(raw_path).parent / "chromedriver"
         os.chmod(driver_path, 0o755)
@@ -30,51 +32,35 @@ class ZillowClient:
         service = Service(str(driver_path))
         driver = webdriver.Chrome(service=service, options=options)
 
+        url = "https://www.zillow.com/sebring-fl/multi-family/2-_beds/1-_baths/200000-400000_price/105.0-mile_radius/central-ac/"
+
         try:
-            url = "https://www.zillow.com/sebring-fl/multi-family/2-_beds/1-_baths/200000-400000_price/105.0-mile_radius/central-ac/"
+            print(f"Navigating to {url}")
             driver.get(url)
+            time.sleep(5)  # Allow some JS to load
 
-            # Wait for at least one property card to appear
-            try:
-                WebDriverWait(driver, 30).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "[data-test='property-card']"))
-                )
-            except:
-                print("⚠️ Timeout: No listings found or Zillow changed layout.")
-                return []
-
-            # Handle cookie consent popup if it appears
-            try:
-                consent_button = driver.find_element(By.XPATH, "//button[contains(text(),'Accept')]")
-                consent_button.click()
-                print("Cookie consent accepted.")
-                time.sleep(2)
-            except Exception:
-                pass
-
-            # Allow dynamic content to load
+            # Scroll to bottom to load lazy content
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(5)
 
-            # Scroll down to bottom repeatedly to trigger lazy loading
-            last_height = driver.execute_script("return document.body.scrollHeight")
-            while True:
-                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(2)
-                new_height = driver.execute_script("return document.body.scrollHeight")
-                if new_height == last_height:
-                    break
-                last_height = new_height
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "[data-test='property-card']"))
+            )
 
-            # Save page source for debugging
+            # Debug dump
             with open("debug_page.html", "w", encoding="utf-8") as f:
                 f.write(driver.page_source)
-            print("Saved page source to debug_page.html")
+                print("Saved page source to debug_page.html")
 
-            # Parse listings from page source
+            driver.save_screenshot("debug_screenshot.png")
+            print("Saved screenshot to debug_screenshot.png")
+
+            print("Parsing results...")
             soup = BeautifulSoup(driver.page_source, "html.parser")
+            cards = soup.select("[data-test='property-card']")
             listings = []
 
-            for card in soup.select("[data-test='property-card']"):
+            for card in cards:
                 try:
                     address = card.select_one("address")
                     price = card.select_one("span[data-test='property-card-price']")
@@ -89,6 +75,22 @@ class ZillowClient:
 
             print(f"✅ Found {len(listings)} properties.")
             return listings
+
+        except Exception as e:
+            print(f"❌ Exception occurred: {e}")
+            # Save debug files even on exception
+            try:
+                driver.save_screenshot("debug_screenshot.png")
+                print("Saved screenshot to debug_screenshot.png (after exception)")
+            except Exception as se:
+                print(f"Failed to save screenshot: {se}")
+            try:
+                with open("debug_page.html", "w", encoding="utf-8") as f:
+                    f.write(driver.page_source)
+                    print("Saved page source to debug_page.html (after exception)")
+            except Exception as pe:
+                print(f"Failed to save page source: {pe}")
+            return []
 
         finally:
             driver.quit()
