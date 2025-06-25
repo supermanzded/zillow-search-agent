@@ -5,7 +5,7 @@ from typing import List, Dict
 class ZillowClient:
     """Fetch active multi‑family *for‑sale* listings near Sebring, FL using the Realtor16 API (apimaker)."""
 
-    BASE_URL = "https://realtor-search.p.rapidapi.com/properties/nearby-home-values?lat=27.4956&lon=-81.4409&resultsPerPage=20&radius=105"
+    BASE_URL = "https://realtor-search.p.rapidapi.com/properties/list-for-sale?latitude=27.4956&longitude=-81.4409&radius=105&limit=50&beds_min=2&baths_min=1&price_min=200000&price_max=400000&property_type=multi_family"
     HOST     = "realtor16.p.rapidapi.com"
     LAT, LON = 27.4956, -81.4409   # Sebring, FL
     RADIUS   = 105                 # miles
