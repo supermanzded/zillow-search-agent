@@ -1,96 +1,140 @@
+"""
+ZillowClient re-implemented to call the Realtor Data API on RapidAPI.
+Keeps the same public method:  search_properties() → List[dict]
+"""
+
 import os
-from pathlib import Path
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-import time
+import math
+from typing import List, Dict
+
+import requests
+from dotenv import load_dotenv
+
+# ---------------------------------------------
+# Configuration
+# ---------------------------------------------
+load_dotenv()  # so RAPIDAPI_KEY works locally, too
+
+API_KEY = os.getenv("RAPIDAPI_KEY")
+if not API_KEY:
+    raise RuntimeError(
+        "Missing RAPIDAPI_KEY env var.  "
+        "Add it in GitHub Secrets and optionally in a local .env file."
+    )
+
+HOST = "realtor.p.rapidapi.com"
+BASE_URL = f"https://{HOST}"
+
+HEADERS = {
+    "X-RapidAPI-Key": API_KEY,
+    "X-RapidAPI-Host": HOST,
+    "Accept": "application/json",
+}
+
+# Sebring, FL
+LAT, LON = 27.4956, -81.4409
+RADIUS_MILES = 105
+
+PRICE_MIN, PRICE_MAX = 200_000, 400_000
+BEDS_MIN, BATHS_MIN = 2, 1
+PROP_TYPE = "multi_family"            # matches Realtor.com terminology
+PAGE_SIZE = 200                       # max allowed by the API
 
 
 class ZillowClient:
+    """
+    *Not* scraping Zillow any more—name retained so main.py still works.
+    """
+
     def __init__(self):
-        print("ZillowClient initialized.")
+        print("ZillowClient (via Realtor Data API) initialized.")
 
-    def search_properties(self):
-        print("Starting property search...")
+    # -----------------------------------------
+    # Public: same signature as before
+    # -----------------------------------------
+    def search_properties(self) -> List[Dict]:
+        """Return listings that satisfy all user filters, including central AC."""
+        listings: List[Dict] = []
+        offset = 0
 
-        options = Options()
-        options.add_argument("--headless=new")  # For GitHub Actions
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=1920,1080")
+        while True:
+            batch = self._fetch_batch(offset)
+            if not batch:
+                break
 
-        raw_path = ChromeDriverManager().install()
-        driver_path = Path(raw_path).parent / "chromedriver"
-        os.chmod(driver_path, 0o755)
-
-        service = Service(str(driver_path))
-        driver = webdriver.Chrome(service=service, options=options)
-
-        url = "https://www.zillow.com/sebring-fl/multi-family/2-_beds/1-_baths/200000-400000_price/105.0-mile_radius/central-ac/"
-
-        try:
-            print(f"Navigating to {url}")
-            driver.get(url)
-            time.sleep(5)  # Allow some JS to load
-
-            # Scroll to bottom to load lazy content
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(5)
-
-            WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "[data-test='property-card']"))
-            )
-
-            # Debug dump
-            with open("debug_page.html", "w", encoding="utf-8") as f:
-                f.write(driver.page_source)
-                print("Saved page source to debug_page.html")
-
-            driver.save_screenshot("debug_screenshot.png")
-            print("Saved screenshot to debug_screenshot.png")
-
-            print("Parsing results...")
-            soup = BeautifulSoup(driver.page_source, "html.parser")
-            cards = soup.select("[data-test='property-card']")
-            listings = []
-
-            for card in cards:
-                try:
-                    address = card.select_one("address")
-                    price = card.select_one("span[data-test='property-card-price']")
-                    listings.append({
-                        "address": address.text.strip() if address else "N/A",
-                        "price": price.text.strip() if price else "N/A",
-                        "units": "N/A"
-                    })
-                except Exception as e:
-                    print(f"⚠️ Error parsing card: {e}")
+            for item in batch:
+                # Secondary filter: make sure each *unit* (if available) is ≥2-bed/1-bath.
+                # Realtor API does not expose per-unit beds/baths, so we rely on overall
+                # beds_total & baths_total fields—closest proxy to the original spec.
+                beds = (item.get("description") or {}).get("beds", 0)
+                baths = (item.get("description") or {}).get("baths", 0)
+                if beds < BEDS_MIN or baths < BATHS_MIN:
                     continue
 
-            print(f"✅ Found {len(listings)} properties.")
-            return listings
+                # Fetch detail to verify central AC
+                prop_id = item["property_id"]
+                if not self._has_central_ac(prop_id):
+                    continue
 
-        except Exception as e:
-            print(f"❌ Exception occurred: {e}")
-            # Save debug files even on exception
-            try:
-                driver.save_screenshot("debug_screenshot.png")
-                print("Saved screenshot to debug_screenshot.png (after exception)")
-            except Exception as se:
-                print(f"Failed to save screenshot: {se}")
-            try:
-                with open("debug_page.html", "w", encoding="utf-8") as f:
-                    f.write(driver.page_source)
-                    print("Saved page source to debug_page.html (after exception)")
-            except Exception as pe:
-                print(f"Failed to save page source: {pe}")
-            return []
+                addr = item["location"]["address"]
+                full_address = f'{addr.get("line")}, {addr.get("city")}, {addr.get("state_code")} {addr.get("postal_code")}'
+                price_fmt = f'${item["list_price"]:,.0f}'
 
-        finally:
-            driver.quit()
+                listings.append(
+                    {
+                        "address": full_address,
+                        "price": price_fmt,
+                        "units": "N/A",  # Realtor API does not expose unit-count
+                    }
+                )
+
+            # Pagination
+            if len(batch) < PAGE_SIZE:
+                break
+            offset += PAGE_SIZE
+
+        print(f"✅ Found {len(listings)} qualifying properties.")
+        return listings
+
+    # -----------------------------------------
+    # Internal helpers
+    # -----------------------------------------
+    def _fetch_batch(self, offset: int):
+        """One paginated call to /properties/v3/list"""
+        params = {
+            "latitude": LAT,
+            "longitude": LON,
+            "radius": RADIUS_MILES,
+            "price_min": PRICE_MIN,
+            "price_max": PRICE_MAX,
+            "beds_min": BEDS_MIN,
+            "baths_min": BATHS_MIN,
+            "prop_type": PROP_TYPE,
+            "limit": PAGE_SIZE,
+            "offset": offset,
+            "sort": "newest",
+        }
+        resp = requests.get(f"{BASE_URL}/properties/v3/list", headers=HEADERS, params=params, timeout=30)
+        resp.raise_for_status()
+        raw = resp.json()
+        return (raw.get("home_search") or {}).get("results", [])
+
+    def _has_central_ac(self, property_id: str) -> bool:
+        """Look up one property’s detail and check cooling features."""
+        params = {"property_id": property_id}
+        resp = requests.get(f"{BASE_URL}/properties/v3/detail", headers=HEADERS, params=params, timeout=30)
+        resp.raise_for_status()
+        home = (resp.json().get("properties") or [{}])[0]
+        # Cooling info can live in several places; normalise to a single string
+        cooling_fields = []
+
+        features = home.get("features", {})
+        if "cooling" in features:
+            cooling_fields += features["cooling"]
+
+        details = home.get("property", {})
+        if "cooling" in details:
+            cooling_fields += [details["cooling"]]
+
+        combined = " ".join(cooling_fields).lower()
+        return "central" in combined  # matches “Central Air”, “Central Cooling”, etc.
