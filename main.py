@@ -34,7 +34,7 @@ def send_email(subject: str, body: str, attachment_path: str, to_email: str) -> 
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.ehlo()                     # greet
+            server.ehlo()
             server.login(gmail_user, gmail_pass)
             server.send_message(msg)
         print(f"✅ Email sent to {to_email}")
@@ -47,6 +47,11 @@ def save_listings_to_excel(listings, filepath: str) -> bool:
     if not listings:
         print("⚠️  No listings to save.")
         return False
+
+    # ── NEW: show a sample in the logs
+    print("First 3 listings sample (raw JSON objects):")
+    for listing in listings[:3]:
+        print(listing)
 
     rows = []
     for item in listings:
