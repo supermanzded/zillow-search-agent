@@ -5,13 +5,12 @@ from typing import List, Dict
 class ZillowClient:
     """Fetch active multi‑family *for‑sale* listings near Sebring, FL using the Realtor16 API (apimaker)."""
 
-    BASE_URL = "https://realtor-search.p.rapidapi.com/properties/list-for-sale?latitude=27.4956&longitude=-81.4409&radius=105&limit=50&beds_min=2&baths_min=1&price_min=200000&price_max=400000&property_type=multi_family"
-    HOST     = "x-rapidapi-host: realtor-search.p.rapidapi.com"
+    BASE_URL = "https://realtor-search.p.rapidapi.com/properties/list-for-sale"
     LAT, LON = 27.4956, -81.4409   # Sebring, FL
-    RADIUS   = 105                 # miles
+    RADIUS = 105                   # miles
 
     # user filters
-    BEDS_MIN  = 2
+    BEDS_MIN = 2
     BATHS_MIN = 1
     PRICE_MIN = 200_000
     PRICE_MAX = 400_000
@@ -23,23 +22,22 @@ class ZillowClient:
             raise RuntimeError("RAPIDAPI_KEY environment variable not set")
 
         self.headers = {
-            "X-RapidAPI-Key":  key,
-            "X-RapidAPI-Host": self.HOST,
+            "X-RapidAPI-Key": key,
+            "X-RapidAPI-Host": "realtor-search.p.rapidapi.com",
         }
         print("ZillowClient (Realtor16 for‑sale API) ready.")
 
-    # ───────────────────────────────────────── helpers
     def _fetch(self, offset: int = 0, limit: int = 50) -> List[Dict]:
         params = {
-            "latitude":     self.LAT,
-            "longitude":    self.LON,
-            "radius":       self.RADIUS,
-            "offset":       offset,
-            "limit":        limit,
-            "beds_min":     self.BEDS_MIN,
-            "baths_min":    self.BATHS_MIN,
-            "price_min":    self.PRICE_MIN,
-            "price_max":    self.PRICE_MAX,
+            "latitude": self.LAT,
+            "longitude": self.LON,
+            "radius": self.RADIUS,
+            "offset": offset,
+            "limit": limit,
+            "beds_min": self.BEDS_MIN,
+            "baths_min": self.BATHS_MIN,
+            "price_min": self.PRICE_MIN,
+            "price_max": self.PRICE_MAX,
             "property_type": self.PROP_TYPE,
         }
 
@@ -51,7 +49,6 @@ class ZillowClient:
         # Realtor16 returns an object with "data" key holding a list of property dicts
         return resp.json().get("data", [])
 
-    # ───────────────────────────────────────── public
     def search_properties(self) -> List[Dict]:
         print("Fetching listings …")
         listings: List[Dict] = []
