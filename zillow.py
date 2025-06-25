@@ -18,19 +18,6 @@ class ZillowClient:
         }
         print("ZillowClient (Realtor16 for‑sale API) ready.")
 
-    def _fetch(self, offset: int = 0, limit: int = 50) -> List[Dict]:
-        params = {
-            "latitude": self.LAT,
-            "longitude": self.LON,
-            "radius": self.RADIUS,
-            "offset": offset,
-            "limit": limit,
-            "beds_min": self.BEDS_MIN,
-            "baths_min": self.BATHS_MIN,
-            "price_min": self.PRICE_MIN,
-            "price_max": self.PRICE_MAX,
-            "property_type": self.PROP_TYPE,
-        }
 
         resp = requests.get(self.BASE_URL, headers=self.headers, params=params, timeout=30)
         if resp.status_code != 200:
