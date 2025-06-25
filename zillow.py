@@ -1,45 +1,26 @@
 import os
 import requests
 
-
 class ZillowClient:
     def __init__(self):
         self.api_key = os.getenv("RAPIDAPI_KEY")
-        self.base_url = "https://realtor-search.p.rapidapi.com/properties/nearby-home-values?lat=40.23184&lon=-76.895774"
+        if not self.api_key:
+            raise ValueError("RAPIDAPI_KEY environment variable not set")
+        
+        self.base_url = "https://realtor-search.p.rapidapi.com/properties/list-for-sale"
         self.headers = {
-            "x-rapidapi-host: realtor-search.p.rapidapi.com",
+            "x-rapidapi-host": "realtor-search.p.rapidapi.com",
             "x-rapidapi-key": self.api_key
         }
-        self.lat = 27.4956  # Sebring, FL
-        self.lon = -81.4409
+        self.lat = 27.4956  # Sebring, FL latitude
+        self.lon = -81.4409  # Sebring, FL longitude
         print("ZillowClient (Realtor Search API) initialized.")
 
-    def search_properties(self):
-        print("Starting property search...")
-        listings = []
-        offset = 0
-        limit = 200
-
-        while True:
-            print(f"Fetching batch starting at offset {offset}...")
-            batch = self._query_batch(offset, limit)
-
-            if not batch:
-                break
-
-            listings.extend(batch)
-            if len(batch) < limit:
-                break
-            offset += limit
-
-        print(f"✅ Retrieved {len(listings)} listings.")
-        return listings
-
-    def _query_batch(self, offset, limit):
+    def _query_batch(self, offset=0, limit=50):
         params = {
             "lat": self.lat,
             "lon": self.lon,
-            "radius": 105,
+            "radius": 105,  # miles
             "limit": limit,
             "offset": offset,
             "beds_min": 2,
@@ -49,22 +30,24 @@ class ZillowClient:
             "property_type": "multi_family",
             "sort": "newest"
         }
-
+        print(f"Fetching batch starting at offset {offset}...")
         response = requests.get(self.base_url, headers=self.headers, params=params)
         response.raise_for_status()
-
         data = response.json()
-        props = data.get("data", {}).get("home_search", {}).get("results", [])
+        return data.get("properties", [])
 
-        parsed = []
-        for p in props:
-            parsed.append({
-                "address": p.get("location", {}).get("address", {}).get("line", "N/A"),
-                "price": p.get("list_price", "N/A"),
-                "beds": p.get("description", {}).get("beds", "N/A"),
-                "baths": p.get("description", {}).get("baths", "N/A"),
-                "units": "N/A"  # May not be available in this endpoint
-            })
-
-        print(f"🔹 Found {len(parsed)} listings in this batch.")
-        return parsed
+    def search_properties(self):
+        print("Starting property search...")
+        listings = []
+        offset = 0
+        limit = 50
+        while True:
+            batch = self._query_batch(offset=offset, limit=limit)
+            if not batch:
+                break
+            listings.extend(batch)
+            if len(batch) < limit:
+                break
+            offset += limit
+        print(f"Retrieved {len(listings)} listings.")
+        return listings
