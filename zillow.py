@@ -3,12 +3,12 @@ import requests
 from typing import List, Dict
 
 class ZillowClient:
-    """Fetch active multi‑family listings from Realtor Search API."""
+    """Fetch active multi‑family listings using Realtor16 API (apimaker)"""
 
-    BASE_URL = "https://realtor-search.p.rapidapi.com/properties/list-for-sale"
-    HOST     = "realtor-search.p.rapidapi.com"
+    BASE_URL = "https://realtor16.p.rapidapi.com/search/forrent/coordinates"
+    HOST     = "realtor16.p.rapidapi.com"
     LAT, LON = 27.4956, -81.4409   # Sebring, FL
-    RADIUS   = 105                 # miles
+    RADIUS   = 105
 
     def __init__(self):
         key = os.getenv("RAPIDAPI_KEY")
@@ -19,22 +19,20 @@ class ZillowClient:
             "X-RapidAPI-Key":  key,
             "X-RapidAPI-Host": self.HOST,
         }
-        print("ZillowClient (Realtor Search API) ready.")
+        print("ZillowClient (Realtor16 API) ready.")
 
-    # ──────────────────────────────────────────────── helpers
     def _fetch(self, offset: int, limit: int = 100) -> List[Dict]:
         params = {
-            "lat":        self.LAT,
-            "lon":        self.LON,
+            "latitude":   self.LAT,
+            "longitude":  self.LON,
             "radius":     self.RADIUS,
-            "limit":      limit,
             "offset":     offset,
-            "price_min":  200_000,
-            "price_max":  400_000,
+            "limit":      limit,
             "beds_min":   2,
             "baths_min":  1,
+            "price_min":  200000,
+            "price_max":  400000,
             "property_type": "multi_family",
-            "sort":       "newest",
         }
 
         resp = requests.get(self.BASE_URL, headers=self.headers, params=params, timeout=30)
@@ -42,11 +40,9 @@ class ZillowClient:
             print("❌ HTTP", resp.status_code, resp.text[:200])
         resp.raise_for_status()
 
-        # Realtor Search response structure
-        data = resp.json().get("data", {}).get("home_search", {})
-        return data.get("results", [])
+        data = resp.json()
+        return data.get("data", [])  # Adjust based on actual response format
 
-    # ──────────────────────────────────────────────── public
     def search_properties(self) -> List[Dict]:
         print("Fetching listings …")
         listings: List[Dict] = []
@@ -63,4 +59,3 @@ class ZillowClient:
 
         print(f"✅ Total listings fetched: {len(listings)}")
         return listings
-
