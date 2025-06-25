@@ -13,7 +13,7 @@ class ZillowClient:
     HOST     = "realtor-search.p.rapidapi.com"
 
     # ------- search scope -------
-    LOCATION        = "Orlando, FL"   # main search anchor
+    LOCATION        = "city: Orlando, FL"   # main search anchor
     EXPAND_RADIUS   = 50              # allowed values: 0, 25, 50 (miles)
 
     # ------- user filters -------
