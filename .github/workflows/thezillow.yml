@@ -1,12 +1,11 @@
-name: Weekly Zillow Report
+name: Weekly Zillow Report  # keep name—logic is new
 
 on:
   schedule:
-    - cron: '30 13 * * 2'  # Every Tuesday at 9:30 AM ET (13:30 UTC)
+    - cron: '30 13 * * 2'   # Tue 09:30 ET
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   run-report:
@@ -14,44 +13,15 @@ jobs:
     env:
       GMAIL_USER: ${{ secrets.GMAIL_USER }}
       GMAIL_PASS: ${{ secrets.GMAIL_PASS }}
+      RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}   # NEW
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+      - uses: actions/setup-python@v4
+        with: { python-version: '3.10' }
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Remove webdriver-manager cache
-        run: rm -rf ~/.wdm
-
-      - name: Install Google Chrome
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget gnupg2
-          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
+      - run: pip install -r requirements.txt
 
       - name: Run main.py
         run: python main.py
-
-      - name: Upload debug HTML
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug_page
-          path: debug_page.html
-
-      - name: Upload debug screenshot
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug_screenshot
-          path: debug_screenshot.png
