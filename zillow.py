@@ -9,8 +9,8 @@ class ZillowClient:
     HOST     = "realtor-search.p.rapidapi.com"
 
     # Target location: within 105 miles of Sebring, FL (we'll expand via city-based query)
-    LOCATION     = "Sebring, Florida"
-    EXPAND_RADIUS = 105
+    LOCATION     = "city: Orlando, Florida"
+    EXPAND_RADIUS = 50
 
     # Filters
     BEDS_MIN   = 2
