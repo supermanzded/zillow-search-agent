@@ -5,7 +5,7 @@ from typing import List, Dict
 
 class ZillowClient:
     """
-    Fetch active multi-family *for-sale* listings near Sebring, FL
+    Fetch active multi-family *for-sale* listings near Orlando, FL
     using the Realtor Search API (RapidAPI “realtor-search”).
     """
 
@@ -13,7 +13,7 @@ class ZillowClient:
     HOST     = "realtor-search.p.rapidapi.com"
 
     # ------- search scope -------
-    LOCATION        = "Sebring, FL"   # main search anchor
+    LOCATION        = "Orlando, FL"   # main search anchor
     EXPAND_RADIUS   = 50              # allowed values: 0, 25, 50 (miles)
 
     # ------- user filters -------
