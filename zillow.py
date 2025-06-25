@@ -1,94 +1,72 @@
 """
-ZillowClient re-implemented to call the Realtor Data API on RapidAPI.
-Keeps the same public method:  search_properties() → List[dict]
+zillow.py  – now powered by the Realtor16 REST API
+--------------------------------------------------
+• Pulls properties *for-sale* within 105 mi of Sebring FL
+• Filters price ($200-400 k), ≥ 2 beds, ≥ 1 bath, multi-family
+• Verifies “central air” in the detail call
+Requires  :  RAPIDAPI_KEY  in repo secrets
+Endpoints :  GET /search/forsale/coordinates
+             GET /properties/v3/detail         (same host)
 """
 
 import os
-import math
 from typing import List, Dict
 
 import requests
 from dotenv import load_dotenv
 
-# ---------------------------------------------
-# Configuration
-# ---------------------------------------------
-load_dotenv()  # so RAPIDAPI_KEY works locally, too
-
+# ───────────────────────────────────────────────────────────
+# Config & constants
+# ───────────────────────────────────────────────────────────
+load_dotenv()                       # makes local .env optional
 API_KEY = os.getenv("RAPIDAPI_KEY")
 if not API_KEY:
-    raise RuntimeError(
-        "Missing RAPIDAPI_KEY env var.  "
-        "Add it in GitHub Secrets and optionally in a local .env file."
-    )
+    raise RuntimeError("Missing RAPIDAPI_KEY env var or secret.")
 
-HOST = "realtor.p.rapidapi.com"
-BASE_URL = f"https://{HOST}"
+HOST = "realtor16.p.rapidapi.com"
+BASE = f"https://{HOST}"
 
 HEADERS = {
-    "X-RapidAPI-Key": API_KEY,
-    "X-RapidAPI-Host": HOST,
-    "Accept": "application/json",
+    "x-rapidapi-key": API_KEY,
+    "x-rapidapi-host": HOST,
+    "accept": "application/json",
 }
 
-# Sebring, FL
-LAT, LON = 27.4956, -81.4409
-RADIUS_MILES = 105
-
+LAT, LON = 27.4956, -81.4409          # Sebring FL
+RADIUS = 105                          # miles
 PRICE_MIN, PRICE_MAX = 200_000, 400_000
 BEDS_MIN, BATHS_MIN = 2, 1
-PROP_TYPE = "multi_family"            # matches Realtor.com terminology
-PAGE_SIZE = 200                       # max allowed by the API
+PAGE_SIZE = 200                       # API default is 20; 200 works fine
+
+# property_type values accepted by the endpoint:
+#   single_family, condo, townhouse, multi_family, land, farm, apartment …
+PROP_TYPE = "multi_family"
 
 
 class ZillowClient:
-    """
-    *Not* scraping Zillow any more—name retained so main.py still works.
-    """
+    def __init__(self) -> None:
+        print("ZillowClient (Realtor16 API) initialized.")
 
-    def __init__(self):
-        print("ZillowClient (via Realtor Data API) initialized.")
-
-    # -----------------------------------------
-    # Public: same signature as before
-    # -----------------------------------------
+    # ── public ────────────────────────────────────────────
     def search_properties(self) -> List[Dict]:
-        """Return listings that satisfy all user filters, including central AC."""
         listings: List[Dict] = []
         offset = 0
 
         while True:
-            batch = self._fetch_batch(offset)
+            batch = self._query_batch(offset)
             if not batch:
                 break
 
             for item in batch:
-                # Secondary filter: make sure each *unit* (if available) is ≥2-bed/1-bath.
-                # Realtor API does not expose per-unit beds/baths, so we rely on overall
-                # beds_total & baths_total fields—closest proxy to the original spec.
-                beds = (item.get("description") or {}).get("beds", 0)
-                baths = (item.get("description") or {}).get("baths", 0)
-                if beds < BEDS_MIN or baths < BATHS_MIN:
+                if not self._qualifies_basic(item):
                     continue
 
-                # Fetch detail to verify central AC
                 prop_id = item["property_id"]
-                if not self._has_central_ac(prop_id):
+                if not self._has_central_air(prop_id):
                     continue
 
-                addr = item["location"]["address"]
-                full_address = f'{addr.get("line")}, {addr.get("city")}, {addr.get("state_code")} {addr.get("postal_code")}'
-                price_fmt = f'${item["list_price"]:,.0f}'
+                listings.append(self._format_card(item))
 
-                listings.append(
-                    {
-                        "address": full_address,
-                        "price": price_fmt,
-                        "units": "N/A",  # Realtor API does not expose unit-count
-                    }
-                )
-
-            # Pagination
             if len(batch) < PAGE_SIZE:
                 break
             offset += PAGE_SIZE
@@ -96,45 +74,61 @@ class ZillowClient:
         print(f"✅ Found {len(listings)} qualifying properties.")
         return listings
 
-    # -----------------------------------------
-    # Internal helpers
-    # -----------------------------------------
-    def _fetch_batch(self, offset: int):
-        """One paginated call to /properties/v3/list"""
+    # ── helpers ───────────────────────────────────────────
+    def _query_batch(self, offset: int):
+        """
+        One call to /search/forsale/coordinates
+        Docs: the endpoint accepts   latitude, longitude, radius,
+              limit, offset, sort, beds_min, baths_min, price_min, price_max,
+              property_type  (comma-separated list)
+        """
         params = {
             "latitude": LAT,
             "longitude": LON,
-            "radius": RADIUS_MILES,
-            "price_min": PRICE_MIN,
-            "price_max": PRICE_MAX,
-            "beds_min": BEDS_MIN,
-            "baths_min": BATHS_MIN,
-            "prop_type": PROP_TYPE,
+            "radius": RADIUS,
             "limit": PAGE_SIZE,
             "offset": offset,
-            "sort": "newest",
+            "sort": "newest",            # or 'distance' / 'relevance'
+            "beds_min": BEDS_MIN,
+            "baths_min": BATHS_MIN,
+            "price_min": PRICE_MIN,
+            "price_max": PRICE_MAX,
+            "property_type": PROP_TYPE,
         }
-        resp = requests.get(f"{BASE_URL}/properties/v3/list", headers=HEADERS, params=params, timeout=30)
-        resp.raise_for_status()
-        raw = resp.json()
-        return (raw.get("home_search") or {}).get("results", [])
+        r = requests.get(f"{BASE}/search/forsale/coordinates",
+                         headers=HEADERS, params=params, timeout=30)
+        r.raise_for_status()
+        return r.json().get("data", {}).get("home_search", {}).get("results", [])
 
-    def _has_central_ac(self, property_id: str) -> bool:
-        """Look up one property’s detail and check cooling features."""
-        params = {"property_id": property_id}
-        resp = requests.get(f"{BASE_URL}/properties/v3/detail", headers=HEADERS, params=params, timeout=30)
-        resp.raise_for_status()
-        home = (resp.json().get("properties") or [{}])[0]
-        # Cooling info can live in several places; normalise to a single string
-        cooling_fields = []
+    def _qualifies_basic(self, item: Dict) -> bool:
+        """Secondary guard: some edge cases still slip through."""
+        desc = item.get("description", {})
+        return (
+            desc.get("beds", 0) >= BEDS_MIN and
+            desc.get("baths", 0) >= BATHS_MIN and
+            PRICE_MIN <= item.get("list_price", 0) <= PRICE_MAX
+        )
 
-        features = home.get("features", {})
-        if "cooling" in features:
-            cooling_fields += features["cooling"]
+    def _has_central_air(self, prop_id: str) -> bool:
+        """Detail call → look for 'central' in cooling features."""
+        params = {"property_id": prop_id}
+        r = requests.get(f"{BASE}/properties/v3/detail",
+                         headers=HEADERS, params=params, timeout=30)
+        r.raise_for_status()
+        prop = (r.json().get("data", {}).get("property", [{}]) or [{}])[0]
 
-        details = home.get("property", {})
-        if "cooling" in details:
-            cooling_fields += [details["cooling"]]
+        features = " ".join(
+            (prop.get("features", {}).get("cooling", [])) +
+            [prop.get("property", {}).get("cooling", "")]
+        ).lower()
+        return "central" in features
 
-        combined = " ".join(cooling_fields).lower()
-        return "central" in combined  # matches “Central Air”, “Central Cooling”, etc.
+    @staticmethod
+    def _format_card(item: Dict) -> Dict:
+        addr = item["location"]["address"]
+        return {
+            "address": f'{addr.get("line")}, {addr.get("city")}, '
+                       f'{addr.get("state_code")} {addr.get("postal_code")}',
+            "price": f'${item["list_price"]:,.0f}',
+            "units": "N/A",          # Realtor API has no per-unit breakdown
+        }
