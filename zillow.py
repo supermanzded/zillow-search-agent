@@ -35,37 +35,34 @@ class ZillowClient:
         print("ZillowClient (Realtor Search API) ready.")
 
     # ---------------------------------------------------------------- helpers
-    def _fetch(self, offset: int = 0, limit: int = 50) -> List[Dict]:
-        """Return one page of results (each item is a listing dict)."""
-        params = {
-            "location":          self.LOCATION,   # e.g. "Sebring, FL"
-            "sortBy":            "relevance",
-            "expandSearchArea":  str(self.EXPAND_RADIUS),  # 0 | 25 | 50
-            "propertyType":      self.PROP_TYPE,
-            "prices":            f"{self.PRICE_MIN},{self.PRICE_MAX}",
-            "bedrooms":          str(self.BEDS_MIN),
-            "bathrooms":         str(self.BATHS_MIN),
-            "offset":            str(offset),
-            "limit":             str(limit),
-        }
+   def _fetch(self, offset: int = 0, limit: int = 50) -> List[Dict]:
+    """Return one page of results (each item is a listing dict)."""
+    params = {
+        "location":          self.LOCATION,
+        "sortBy":            "relevance",
+        "expandSearchArea":  str(self.EXPAND_RADIUS),
+        "propertyType":      self.PROP_TYPE,
+        "prices":            f"{self.PRICE_MIN},{self.PRICE_MAX}",
+        "bedrooms":          str(self.BEDS_MIN),
+        "bathrooms":         str(self.BATHS_MIN),
+        "offset":            str(offset),
+        "limit":             str(limit),
+    }
 
-        resp = requests.get(
-            self.BASE_URL,
-            headers=self.headers,
-            params=params,
-            timeout=30,
-        )
-        if resp.status_code != 200:
-            print("❌ HTTP", resp.status_code, resp.text[:250])
-        resp.raise_for_status()
+    resp = requests.get(self.BASE_URL, headers=self.headers, params=params, timeout=30)
+    if resp.status_code != 200:
+        print("❌ HTTP", resp.status_code, resp.text[:250])
+    resp.raise_for_status()
 
-        payload = resp.json()
-        results = (
-            payload.get("data", {})
-                   .get("home_search", {})
-                   .get("results", [])
-        )
-        return results
+    payload = resp.json()
+    data = payload.get("data")
+    if not data or "home_search" not in data:
+        print("⚠️ No `home_search` in payload:", payload)
+        return []
+
+    results = data["home_search"].get("results", [])
+    return results
+
 
     # ---------------------------------------------------------------- public
     def search_properties(self) -> List[Dict]:
