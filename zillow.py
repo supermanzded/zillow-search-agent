@@ -5,7 +5,7 @@ from typing import List, Dict
 
 class ZillowClient:
     """
-    Fetch active multi-family *for-sale* listings near Orlando, FL
+    Fetch active multi-family *for-sale* listings near Sebring, FL
     using the Realtor Search API (RapidAPI “realtor-search”).
     """
 
@@ -13,7 +13,7 @@ class ZillowClient:
     HOST     = "realtor-search.p.rapidapi.com"
 
     # ------- search scope -------
-    LOCATION        = "city: Orlando, FL"   # main search anchor
+    LOCATION        = "Sebring, FL"   # main search anchor
     EXPAND_RADIUS   = 50              # allowed values: 0, 25, 50 (miles)
 
     # ------- user filters -------
@@ -35,32 +35,32 @@ class ZillowClient:
         print("ZillowClient (Realtor Search API) ready.")
 
     # ---------------------------------------------------------------- helpers
-   def _fetch(self, offset: int = 0, limit: int = 50) -> List[Dict]:
-    """Return one page of results (each item is a listing dict)."""
-    params = {
-        "location":          self.LOCATION,
-        "sortBy":            "relevance",
-        "expandSearchArea":  str(self.EXPAND_RADIUS),
-        "propertyType":      self.PROP_TYPE,
-        "prices":            f"{self.PRICE_MIN},{self.PRICE_MAX}",
-        "bedrooms":          str(self.BEDS_MIN),
-        "bathrooms":         str(self.BATHS_MIN),
-        "offset":            str(offset),
-        "limit":             str(limit),
-    }
+    def _fetch(self, offset: int = 0, limit: int = 50) -> List[Dict]:
+        """Return one page of results (each item is a listing dict)."""
+        params = {
+            "location":          self.LOCATION,
+            "sortBy":            "relevance",
+            "expandSearchArea":  str(self.EXPAND_RADIUS),
+            "propertyType":      self.PROP_TYPE,
+            "prices":            f"{self.PRICE_MIN},{self.PRICE_MAX}",
+            "bedrooms":          str(self.BEDS_MIN),
+            "bathrooms":         str(self.BATHS_MIN),
+            "offset":            str(offset),
+            "limit":             str(limit),
+        }
 
-    resp = requests.get(self.BASE_URL, headers=self.headers, params=params, timeout=30)
-    if resp.status_code != 200:
-        print("❌ HTTP", resp.status_code, resp.text[:250])
-    resp.raise_for_status()
+        resp = requests.get(self.BASE_URL, headers=self.headers, params=params, timeout=30)
+        if resp.status_code != 200:
+            print("❌ HTTP", resp.status_code, resp.text[:250])
+        resp.raise_for_status()
 
-    payload = resp.json()
-    data = payload.get("data")
-    if not data or "results" not in data:
-        print("⚠️ No `results` in payload:", payload)
-        return []
+        payload = resp.json()
+        data = payload.get("data")
+        if not data or "results" not in data:
+            print("⚠️ No `results` in payload:", payload)
+            return []
 
-    return data["results"]
+        return data["results"]
 
     # ---------------------------------------------------------------- public
     def search_properties(self) -> List[Dict]:
