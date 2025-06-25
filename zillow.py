@@ -1,53 +1,66 @@
 import os
 import requests
+from typing import List, Dict
 
 class ZillowClient:
+    """Fetch active multi‑family listings from Realtor Search API."""
+
+    BASE_URL = "https://realtor-search.p.rapidapi.com/properties/list-for-sale"
+    HOST     = "realtor-search.p.rapidapi.com"
+    LAT, LON = 27.4956, -81.4409   # Sebring, FL
+    RADIUS   = 105                 # miles
+
     def __init__(self):
-        self.api_key = os.getenv("RAPIDAPI_KEY")
-        if not self.api_key:
-            raise ValueError("RAPIDAPI_KEY environment variable not set")
-        
-        self.base_url = "https://realtor-search.p.rapidapi.com/properties/list-for-sale"
+        key = os.getenv("RAPIDAPI_KEY")
+        if not key:
+            raise RuntimeError("RAPIDAPI_KEY environment variable not set")
+
         self.headers = {
-            "x-rapidapi-host": "realtor-search.p.rapidapi.com",
-            "x-rapidapi-key": self.api_key
+            "X-RapidAPI-Key":  key,
+            "X-RapidAPI-Host": self.HOST,
         }
-        self.lat = 27.4956  # Sebring, FL latitude
-        self.lon = -81.4409  # Sebring, FL longitude
-        print("ZillowClient (Realtor Search API) initialized.")
+        print("ZillowClient (Realtor Search API) ready.")
 
-    def _query_batch(self, offset=0, limit=50):
+    # ──────────────────────────────────────────────── helpers
+    def _fetch(self, offset: int, limit: int = 100) -> List[Dict]:
         params = {
-            "lat": self.lat,
-            "lon": self.lon,
-            "radius": 105,  # miles
-            "limit": limit,
-            "offset": offset,
-            "beds_min": 2,
-            "baths_min": 1,
-            "price_min": 200000,
-            "price_max": 400000,
+            "lat":        self.LAT,
+            "lon":        self.LON,
+            "radius":     self.RADIUS,
+            "limit":      limit,
+            "offset":     offset,
+            "price_min":  200_000,
+            "price_max":  400_000,
+            "beds_min":   2,
+            "baths_min":  1,
             "property_type": "multi_family",
-            "sort": "newest"
+            "sort":       "newest",
         }
-        print(f"Fetching batch starting at offset {offset}...")
-        response = requests.get(self.base_url, headers=self.headers, params=params)
-        response.raise_for_status()
-        data = response.json()
-        return data.get("properties", [])
 
-    def search_properties(self):
-        print("Starting property search...")
-        listings = []
-        offset = 0
-        limit = 50
+        resp = requests.get(self.BASE_URL, headers=self.headers, params=params, timeout=30)
+        if resp.status_code != 200:
+            print("❌ HTTP", resp.status_code, resp.text[:200])
+        resp.raise_for_status()
+
+        # Realtor Search response structure
+        data = resp.json().get("data", {}).get("home_search", {})
+        return data.get("results", [])
+
+    # ──────────────────────────────────────────────── public
+    def search_properties(self) -> List[Dict]:
+        print("Fetching listings …")
+        listings: List[Dict] = []
+        offset, batch_size = 0, 100
+
         while True:
-            batch = self._query_batch(offset=offset, limit=limit)
+            batch = self._fetch(offset, batch_size)
             if not batch:
                 break
             listings.extend(batch)
-            if len(batch) < limit:
+            if len(batch) < batch_size:
                 break
-            offset += limit
-        print(f"Retrieved {len(listings)} listings.")
+            offset += batch_size
+
+        print(f"✅ Total listings fetched: {len(listings)}")
         return listings
+
