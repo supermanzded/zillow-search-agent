@@ -6,15 +6,6 @@ class ZillowClient:
     """Fetch active multi‑family *for‑sale* listings near Sebring, FL using the Realtor16 API (apimaker)."""
 
     BASE_URL = "https://realtor-search.p.rapidapi.com/properties/search-buy?location=city%3A%20Orlando%2C%20Florida&sortBy=relevance&expandSearchArea=50&propertyType=multi_family&prices=200000%2C400000&bedrooms=2&bathrooms=1"
-    LAT, LON = 27.4956, -81.4409   # Sebring, FL
-    RADIUS = 105                   # miles
-
-    # user filters
-    BEDS_MIN = 2
-    BATHS_MIN = 1
-    PRICE_MIN = 200_000
-    PRICE_MAX = 400_000
-    PROP_TYPE = "multi_family"
 
     def __init__(self):
         key = os.getenv("RAPIDAPI_KEY")
