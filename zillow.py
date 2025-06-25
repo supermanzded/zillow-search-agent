@@ -5,9 +5,9 @@ import requests
 class ZillowClient:
     def __init__(self):
         self.api_key = os.getenv("RAPIDAPI_KEY")
-        self.base_url = "https://realtor-search.p.rapidapi.com/properties/list-for-sale"
+        self.base_url = "https://realtor-search.p.rapidapi.com/properties/nearby-home-values?lat=40.23184&lon=-76.895774"
         self.headers = {
-            "x-rapidapi-host": "realtor-search.p.rapidapi.com",
+            "x-rapidapi-host: realtor-search.p.rapidapi.com",
             "x-rapidapi-key": self.api_key
         }
         self.lat = 27.4956  # Sebring, FL
