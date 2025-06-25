@@ -2,7 +2,7 @@ name: Weekly Zillow Report
 
 on:
   schedule:
-    - cron: '30 13 * * 2'   # Tue 09:30 AM ET
+    - cron: '30 13 * * 2'   # Tue 09:30 AM ET (adjust if needed)
   workflow_dispatch:
   push:
     branches: [main]
@@ -14,11 +14,21 @@ jobs:
       GMAIL_USER: ${{ secrets.GMAIL_USER }}
       GMAIL_PASS: ${{ secrets.GMAIL_PASS }}
       RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+      REPORT_RECIPIENT: ${{ secrets.REPORT_RECIPIENT }}  # optional if you want a different email
 
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with: { python-version: '3.10' }
-      - run: pip install -r requirements.txt
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
       - name: Run main.py
         run: python main.py
