@@ -46,17 +46,15 @@ def send_email(subject: str, body: str, attachment_path: str, to_email: str) -> 
 
 # ─────────────────────────────────────────── Main job
 def job() -> None:
-    print("🚀 Starting Zillow Report Job (URL-based search)")
+    print("🚀 Starting Zillow Report Job (API location-based search)")
 
     client = ZillowClient()
+    
+    # --------------------- Provide the location string the API accepts
+    location = "Orlando, FL"  # Use city + state format recognized by ZillowClient
 
-    # --------------------- Provide your Realtor.com search URL here
-    url = (
-        "https://www.realtor.com/realestateandhomes-search/Orlando_FL/"
-        "type-multi-family-home/price-200000-400000/beds-2-baths-1"
-    )
-
-    listings = client.search_by_url(url, retries=5, delay=3)
+    print(f"Fetching listings for {location} …")
+    listings = client.search_by_url(location, retries=5, delay=3)  # Using location string, not raw Realtor.com URL
 
     if not listings:
         print("⚠️  No listings retrieved, skipping report generation.")
