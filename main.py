@@ -54,7 +54,7 @@ def job() -> None:
     # --------------------- Provide your Realtor.com search URL here
     url = "https://www.realtor.com/realestateandhomes-search/Orlando_FL/type-multi-family/price-200000-400000/beds-2/baths-1"
 
-    listings = client.search_by_url(url)
+    listings = client.search_by_url(url, retries=5, delay=3)  # increased retries and delay
 
     if not listings:
         print("⚠️  No listings retrieved, skipping report generation.")
