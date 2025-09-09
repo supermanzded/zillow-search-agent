@@ -1,12 +1,14 @@
 import os
-import pandas as pd
 from zillow import ZillowClient
-from report import generate_excel_report  # ✅ Use the shared report function
+from report import generate_excel_report
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
+from dotenv import load_dotenv
 
+# ─────────────────────────────────────────── Load environment variables
+load_dotenv()  # Loads GMAIL_USER, GMAIL_PASS, RAPIDAPI_KEY, REPORT_RECIPIENT from env.txt
 
 # ─────────────────────────────────────────── Email helper
 def send_email(subject: str, body: str, attachment_path: str, to_email: str) -> None:
@@ -45,16 +47,20 @@ def send_email(subject: str, body: str, attachment_path: str, to_email: str) -> 
 
 # ─────────────────────────────────────────── Main job
 def job() -> None:
-    print("🚀 Starting Zillow Report Job")
+    print("🚀 Starting Zillow Report Job (URL-based search)")
 
     client = ZillowClient()
-    listings = client.search_properties()
+
+    # --------------------- Provide your Realtor.com search URL here
+    url = "https://www.realtor.com/realestateandhomes-search/Orlando_FL/type-multi-family/price-200000-400000/beds-2/baths-1"
+
+    listings = client.search_by_url(url)
 
     if not listings:
         print("⚠️  No listings retrieved, skipping report generation.")
         return
 
-    # ✅ Generate Excel file using report.py
+    # Generate Excel report
     filepath = generate_excel_report(listings)
 
     if filepath:
