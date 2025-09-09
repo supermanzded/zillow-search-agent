@@ -2,21 +2,20 @@ import os
 import requests
 from typing import List, Dict
 
-
 class ZillowClient:
     """
-    Fetch active multi-family *for-sale* listings near Orlando, FL
-    using the Realtor Search API (RapidAPI “realtor-search”).
+    Fetch active multi-family for-sale listings using Realtor Search API (RapidAPI).
     """
 
     BASE_URL = "https://realtor-search.p.rapidapi.com/properties/search-buy"
     HOST     = "realtor-search.p.rapidapi.com"
 
-    # ------- search scope -------
-    LOCATION        = "city: Orlando, FL"   # main search anchor
-    EXPAND_RADIUS   = 50              # allowed values: 0, 25, 50 (miles)
+    # Search scope (Orlando area, within 50 miles)
+    LAT = 28.5383
+    LON = -81.3792
+    RADIUS = 50  # miles
 
-    # ------- user filters -------
+    # Filters
     BEDS_MIN   = 2
     BATHS_MIN  = 1
     PRICE_MIN  = 200_000
@@ -29,24 +28,25 @@ class ZillowClient:
             raise RuntimeError("RAPIDAPI_KEY environment variable not set")
 
         self.headers = {
-            "X-RapidAPI-Key":  key,
-            "X-RapidAPI-Host": self.HOST,
+            "x-rapidapi-key": key,
+            "x-rapidapi-host": self.HOST,
         }
         print("ZillowClient (Realtor Search API) ready.")
 
-    # ---------------------------------------------------------------- helpers
     def _fetch(self, offset: int = 0, limit: int = 50) -> List[Dict]:
-        """Return one page of results (each item is a listing dict)."""
+        """Fetch one page of results."""
         params = {
-            "location":          self.LOCATION,
-            "sortBy":            "relevance",
-            "expandSearchArea":  str(self.EXPAND_RADIUS),
-            "propertyType":      self.PROP_TYPE,
-            "prices":            f"{self.PRICE_MIN},{self.PRICE_MAX}",
-            "bedrooms":          str(self.BEDS_MIN),
-            "bathrooms":         str(self.BATHS_MIN),
-            "offset":            str(offset),
-            "limit":             str(limit),
+            "lat": self.LAT,
+            "lon": self.LON,
+            "radius": self.RADIUS,
+            "property_type": self.PROP_TYPE,
+            "price_min": self.PRICE_MIN,
+            "price_max": self.PRICE_MAX,
+            "beds_min": self.BEDS_MIN,
+            "baths_min": self.BATHS_MIN,
+            "offset": offset,
+            "limit": limit,
+            "sort": "relevance"
         }
 
         resp = requests.get(self.BASE_URL, headers=self.headers, params=params, timeout=30)
@@ -62,9 +62,30 @@ class ZillowClient:
 
         return data["results"]
 
-    # ---------------------------------------------------------------- public
+    def _normalize(self, raw: Dict) -> Dict:
+        """Flatten one raw API record into a clean row for Excel."""
+        address = raw.get("location", {}).get("address", {}).get("line")
+        city = raw.get("location", {}).get("address", {}).get("city")
+        state = raw.get("location", {}).get("address", {}).get("state_code")
+        zipc = raw.get("location", {}).get("address", {}).get("postal_code")
+
+        price = raw.get("list_price")
+        beds = raw.get("description", {}).get("beds")
+        baths = raw.get("description", {}).get("baths")
+        sqft = raw.get("description", {}).get("sqft")
+        url = raw.get("permalink")
+
+        return {
+            "Address": f"{address}, {city}, {state} {zipc}" if address else "N/A",
+            "Price": price or "N/A",
+            "Beds": beds or "N/A",
+            "Baths": baths or "N/A",
+            "SqFt": sqft or "N/A",
+            "URL": f"https://www.realtor.com{url}" if url else "N/A"
+        }
+
     def search_properties(self) -> List[Dict]:
-        """Fetch all pages until no more results are returned."""
+        """Fetch all results and normalize them."""
         print("Fetching listings …")
         listings: List[Dict] = []
         offset, batch_size = 0, 50
@@ -73,10 +94,15 @@ class ZillowClient:
             batch = self._fetch(offset, batch_size)
             if not batch:
                 break
-            listings.extend(batch)
+
+            # normalize each raw listing
+            for item in batch:
+                listings.append(self._normalize(item))
+
             if len(batch) < batch_size:
-                break  # last page
+                break
             offset += batch_size
 
         print(f"✅ Total listings fetched: {len(listings)}")
         return listings
+
