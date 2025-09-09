@@ -46,15 +46,27 @@ def send_email(subject: str, body: str, attachment_path: str, to_email: str) -> 
 
 # ─────────────────────────────────────────── Main job
 def job() -> None:
-    print("🚀 Starting Zillow Report Job (API location-based search)")
+    print("🚀 Starting Zillow Report Job (API payload search)")
 
     client = ZillowClient()
     
-    # --------------------- Provide the location string the API accepts
-    location = "Orlando, FL"  # Use city + state format recognized by ZillowClient
+    # --------------------- Construct RapidAPI-compatible search payload
+    search_payload = {
+        "city": "Orlando",
+        "state_code": "FL",
+        "page": 1,
+        "filters": {
+            "propertyType": {"type": ["multi_family"]},
+            "price": {"min": 200000, "max": 400000},
+            "bed": {"min": 2},
+            "bath": {"min": 1}
+        }
+    }
 
-    print(f"Fetching listings for {location} …")
-    listings = client.search_by_url(location, retries=5, delay=3)  # Using location string, not raw Realtor.com URL
+    print(f"Fetching listings for {search_payload['city']}, {search_payload['state_code']} …")
+
+    # --------------------- Fetch listings with reduced retries to avoid rate limits
+    listings = client.search_by_url(search_payload, retries=3, delay=5)
 
     if not listings:
         print("⚠️  No listings retrieved, skipping report generation.")
