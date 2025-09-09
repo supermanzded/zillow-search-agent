@@ -44,7 +44,6 @@ def send_email(subject: str, body: str, attachment_path: str, to_email: str) -> 
     except Exception as e:
         print(f"❌ Failed to send email: {e}")
 
-
 # ─────────────────────────────────────────── Main job
 def job() -> None:
     print("🚀 Starting Zillow Report Job (URL-based search)")
@@ -52,7 +51,7 @@ def job() -> None:
     client = ZillowClient()
 
     # --------------------- Provide your Realtor.com search URL here
-   url = "https://www.realtor.com/realestateandhomes-search/Orlando_FL/type-multi-family-home/price-200000-400000"
+    url = "https://www.realtor.com/realestateandhomes-search/Orlando_FL/type-multi-family-home/price-200000-400000"
 
     listings = client.search_by_url(url, retries=5, delay=3)  # increased retries and delay
 
@@ -70,7 +69,6 @@ def job() -> None:
         send_email(subject, body, filepath, recipient)
     else:
         print("⚠️  Excel file not generated. Email skipped.")
-
 
 if __name__ == "__main__":
     job()
