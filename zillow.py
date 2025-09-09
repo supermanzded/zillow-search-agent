@@ -10,6 +10,7 @@ class ZillowClient:
     """
 
     BASE_URL = "https://realtor-search.p.rapidapi.com/properties/search-buy"
+    URL_SEARCH = "https://realtor-search.p.rapidapi.com/properties/search-url"
     HOST     = "realtor-search.p.rapidapi.com"
 
     # ------- search scope -------
@@ -96,3 +97,23 @@ class ZillowClient:
             print("❌ No listings retrieved after trying all location formats.")
 
         return listings
+
+    # ---------------------------------------------------------------- URL-based search
+    def search_by_url(self, url: str) -> List[Dict]:
+        """Fetch listings directly from a Realtor.com search URL."""
+        params = {"url": url}
+
+        resp = requests.get(self.URL_SEARCH, headers=self.headers, params=params, timeout=30)
+        if resp.status_code != 200:
+            print(f"❌ HTTP {resp.status_code}", resp.text[:250])
+        resp.raise_for_status()
+
+        payload = resp.json()
+        data = payload.get("data")
+        if not data or "results" not in data:
+            print(f"⚠️ No `results` for URL='{url}':", payload)
+            return []
+
+        results = data["results"]
+        print(f"✅ URL search successful: {len(results)} listings found")
+        return results
