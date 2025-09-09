@@ -2,19 +2,25 @@ import os
 import requests
 from typing import List, Dict
 
+
 class ZillowClient:
     """
-    Fetch active multi-family for-sale listings using Realtor Search API (RapidAPI).
+    Fetch active multi-family *for-sale* listings near Orlando, FL
+    using the Realtor Search API (RapidAPI “realtor-search”).
     """
 
     BASE_URL = "https://realtor-search.p.rapidapi.com/properties/search-buy"
     HOST     = "realtor-search.p.rapidapi.com"
 
-    # Search scope
-    LOCATION = "Orlando, FL"
-    EXPAND_RADIUS = "50"  # valid values: "0", "25", "50"
+    # ------- search scope -------
+    LOCATIONS = [
+        "city: Orlando, FL",   # preferred API syntax
+        "Orlando, FL",         # fallback plain text
+        "32801"                # fallback ZIP code
+    ]
+    EXPAND_RADIUS = 50   # allowed values: 0, 25, 50 (miles)
 
-    # Filters
+    # ------- user filters -------
     BEDS_MIN   = 2
     BATHS_MIN  = 1
     PRICE_MIN  = 200_000
@@ -27,77 +33,66 @@ class ZillowClient:
             raise RuntimeError("RAPIDAPI_KEY environment variable not set")
 
         self.headers = {
-            "x-rapidapi-key": key,
-            "x-rapidapi-host": self.HOST,
+            "X-RapidAPI-Key":  key,
+            "X-RapidAPI-Host": self.HOST,
         }
         print("ZillowClient (Realtor Search API) ready.")
 
-    def _fetch(self, offset: int = 0, limit: int = 50) -> List[Dict]:
-        """Fetch one page of results."""
+    # ---------------------------------------------------------------- helpers
+    def _fetch(self, location: str, offset: int = 0, limit: int = 50) -> List[Dict]:
+        """Return one page of results (each item is a listing dict)."""
         params = {
-            "location": self.LOCATION,
-            "expandSearchArea": self.EXPAND_RADIUS,
-            "propertyType": self.PROP_TYPE,
-            "prices": f"{self.PRICE_MIN},{self.PRICE_MAX}",
-            "bedrooms": str(self.BEDS_MIN),
-            "bathrooms": str(self.BATHS_MIN),
-            "offset": str(offset),
-            "limit": str(limit),
-            "sortBy": "relevance"
+            "location":          location,
+            "sortBy":            "relevance",
+            "expandSearchArea":  str(self.EXPAND_RADIUS),
+            "propertyType":      self.PROP_TYPE,
+            "prices":            f"{self.PRICE_MIN},{self.PRICE_MAX}",
+            "bedrooms":          str(self.BEDS_MIN),
+            "bathrooms":         str(self.BATHS_MIN),
+            "offset":            str(offset),
+            "limit":             str(limit),
         }
 
         resp = requests.get(self.BASE_URL, headers=self.headers, params=params, timeout=30)
         if resp.status_code != 200:
-            print("❌ HTTP", resp.status_code, resp.text[:250])
+            print(f"❌ HTTP {resp.status_code}", resp.text[:250])
         resp.raise_for_status()
 
         payload = resp.json()
         data = payload.get("data")
         if not data or "results" not in data:
-            print("⚠️ No `results` in payload:", payload)
+            print(f"⚠️ No `results` for location='{location}':", payload)
             return []
 
         return data["results"]
 
-    def _normalize(self, raw: Dict) -> Dict:
-        """Flatten one raw API record into a clean row for Excel."""
-        address = raw.get("location", {}).get("address", {}).get("line")
-        city = raw.get("location", {}).get("address", {}).get("city")
-        state = raw.get("location", {}).get("address", {}).get("state_code")
-        zipc = raw.get("location", {}).get("address", {}).get("postal_code")
-
-        price = raw.get("list_price")
-        beds = raw.get("description", {}).get("beds")
-        baths = raw.get("description", {}).get("baths")
-        sqft = raw.get("description", {}).get("sqft")
-        url = raw.get("permalink")
-
-        return {
-            "Address": f"{address}, {city}, {state} {zipc}" if address else "N/A",
-            "Price": price or "N/A",
-            "Beds": beds or "N/A",
-            "Baths": baths or "N/A",
-            "SqFt": sqft or "N/A",
-            "URL": f"https://www.realtor.com{url}" if url else "N/A"
-        }
-
+    # ---------------------------------------------------------------- public
     def search_properties(self) -> List[Dict]:
-        """Fetch all results and normalize them."""
-        print("Fetching listings …")
+        """Fetch all pages until no more results are returned, with retries on location format."""
         listings: List[Dict] = []
-        offset, batch_size = 0, 50
 
-        while True:
-            batch = self._fetch(offset, batch_size)
-            if not batch:
+        for loc in self.LOCATIONS:
+            print(f"🔍 Trying location: {loc}")
+            offset, batch_size = 0, 50
+            temp_results: List[Dict] = []
+
+            while True:
+                batch = self._fetch(loc, offset, batch_size)
+                if not batch:
+                    break
+                temp_results.extend(batch)
+                if len(batch) < batch_size:
+                    break  # last page
+                offset += batch_size
+
+            if temp_results:
+                listings = temp_results
+                print(f"✅ Success with location='{loc}', total listings: {len(listings)}")
                 break
+            else:
+                print(f"⚠️ No results with location='{loc}', trying next option...")
 
-            for item in batch:
-                listings.append(self._normalize(item))
+        if not listings:
+            print("❌ No listings retrieved after trying all location formats.")
 
-            if len(batch) < batch_size:
-                break
-            offset += batch_size
-
-        print(f"✅ Total listings fetched: {len(listings)}")
         return listings
