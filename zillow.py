@@ -10,10 +10,9 @@ class ZillowClient:
     BASE_URL = "https://realtor-search.p.rapidapi.com/properties/search-buy"
     HOST     = "realtor-search.p.rapidapi.com"
 
-    # Search scope (Orlando area, within 50 miles)
-    LAT = 28.5383
-    LON = -81.3792
-    RADIUS = 50  # miles
+    # Search scope
+    LOCATION = "Orlando, FL"
+    EXPAND_RADIUS = "50"  # valid values: "0", "25", "50"
 
     # Filters
     BEDS_MIN   = 2
@@ -36,17 +35,15 @@ class ZillowClient:
     def _fetch(self, offset: int = 0, limit: int = 50) -> List[Dict]:
         """Fetch one page of results."""
         params = {
-            "lat": self.LAT,
-            "lon": self.LON,
-            "radius": self.RADIUS,
-            "property_type": self.PROP_TYPE,
-            "price_min": self.PRICE_MIN,
-            "price_max": self.PRICE_MAX,
-            "beds_min": self.BEDS_MIN,
-            "baths_min": self.BATHS_MIN,
-            "offset": offset,
-            "limit": limit,
-            "sort": "relevance"
+            "location": self.LOCATION,
+            "expandSearchArea": self.EXPAND_RADIUS,
+            "propertyType": self.PROP_TYPE,
+            "prices": f"{self.PRICE_MIN},{self.PRICE_MAX}",
+            "bedrooms": str(self.BEDS_MIN),
+            "bathrooms": str(self.BATHS_MIN),
+            "offset": str(offset),
+            "limit": str(limit),
+            "sortBy": "relevance"
         }
 
         resp = requests.get(self.BASE_URL, headers=self.headers, params=params, timeout=30)
@@ -95,7 +92,6 @@ class ZillowClient:
             if not batch:
                 break
 
-            # normalize each raw listing
             for item in batch:
                 listings.append(self._normalize(item))
 
@@ -105,4 +101,3 @@ class ZillowClient:
 
         print(f"✅ Total listings fetched: {len(listings)}")
         return listings
-
