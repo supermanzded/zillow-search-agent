@@ -46,20 +46,34 @@ def send_email(subject: str, body: str, attachment_path: str, to_email: str) -> 
 
 # ─────────────────────────────────────────── Main job
 def job() -> None:
-    print("🚀 Starting Zillow Report Job (URL-based search)")
+    print("🚀 Starting Zillow Report Job (API parameter search)")
 
     client = ZillowClient()
 
-    # --------------------- Provide your Realtor.com search URL here
-    url = "https://www.realtor.com/realestateandhomes-search/Orlando_FL/type-multi-family-home/price-200000-400000"
+    # --------------------- Search parameters
+    search_params = {
+        "city": "Orlando",
+        "state_code": "FL",
+        "price_min": 200000,
+        "price_max": 400000,
+        "property_type": "multi_family",
+        "beds_min": 2,
+        "baths_min": 1,
+        "features": ["central_air"],  # optional features
+        "retries": 5,
+        "delay": 3
+    }
 
-    listings = client.search_by_url(url, retries=5, delay=3)  # increased retries and delay
+    # --------------------- Fetch listings
+    listings = client.search(**search_params)
 
     if not listings:
         print("⚠️  No listings retrieved, skipping report generation.")
         return
 
-    # Generate Excel report
+    print(f"✅ Total listings fetched: {len(listings)}")
+
+    # --------------------- Generate Excel report
     filepath = generate_excel_report(listings)
 
     if filepath:
