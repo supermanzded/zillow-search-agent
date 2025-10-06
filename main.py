@@ -1,6 +1,6 @@
 import os
 from zillow import ZillowClient
-from report import generate_excel_report
+from report import generate_excel_report  # assumes your existing report generator works fine
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -29,11 +29,13 @@ def send_email(subject: str, body: str, attachment_path: str, to_email: str) -> 
     msg["Subject"] = subject
     msg.attach(MIMEText(body, "plain"))
 
-    if attachment_path:
+    if attachment_path and os.path.exists(attachment_path):
         with open(attachment_path, "rb") as f:
             part = MIMEApplication(f.read(), Name=os.path.basename(attachment_path))
         part["Content-Disposition"] = f'attachment; filename="{os.path.basename(attachment_path)}"'
         msg.attach(part)
+    else:
+        print("⚠️ No valid attachment found, sending email without attachment.")
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
@@ -44,28 +46,28 @@ def send_email(subject: str, body: str, attachment_path: str, to_email: str) -> 
     except Exception as e:
         print(f"❌ Failed to send email: {e}")
 
+
 # ─────────────────────────────────────────── Main job
 def job() -> None:
     print("🚀 Starting Zillow Report Job (API payload search)")
 
     client = ZillowClient()
-    
-    # --------------------- Construct RapidAPI-compatible search payload
+
+    # --------------------- Zillow API-compatible payload
     search_payload = {
-        "city": "Orlando",
-        "state_code": "FL",
-        "page": 1,
-        "filters": {
-            "propertyType": {"type": ["multi_family"]},
-            "price": {"min": 200000, "max": 400000},
-            "bed": {"min": 2},
-            "bath": {"min": 1}
-        }
+        "location": "Orlando, FL",
+        "status_type": "ForSale",
+        "home_type": "MultiFamily",
+        "price_min": 200000,
+        "price_max": 400000,
+        "beds_min": 2,
+        "baths_min": 1,
+        "page": 1
     }
 
-    print(f"Fetching listings for {search_payload['city']}, {search_payload['state_code']} …")
+    print(f"Fetching listings for {search_payload['location']} …")
 
-    # --------------------- Fetch listings with reduced retries to avoid rate limits
+    # --------------------- Fetch listings
     listings = client.search_by_url(search_payload, retries=3, delay=5)
 
     if not listings:
@@ -84,6 +86,7 @@ def job() -> None:
         send_email(subject, body, filepath, recipient)
     else:
         print("⚠️  Excel file not generated. Email skipped.")
+
 
 if __name__ == "__main__":
     job()
