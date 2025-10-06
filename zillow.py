@@ -21,6 +21,7 @@ class ZillowClient:
     def fetch_listings(self, zpid: str) -> List[Dict]:
         """
         Fetch property listing using a Zillow ZPID.
+        Returns a list of property dictionaries.
         """
         if not zpid:
             raise ValueError("❌ ZPID is required for this API call.")
@@ -31,6 +32,7 @@ class ZillowClient:
         print(f"Fetching listings from: {url}")
         listings = self._make_request(url, params)
 
+        # Ensure we always return a list
         if isinstance(listings, dict):
             listings = [listings]
 
@@ -41,9 +43,12 @@ class ZillowClient:
 
         return listings or []
 
-    def _make_request(self, url: str, params: Dict, retries: int = 3, backoff: int = 5) -> Optional[List[Dict]]:
+    def _make_request(
+        self, url: str, params: Dict, retries: int = 3, backoff: int = 5
+    ) -> Optional[List[Dict]]:
         """
-        Make API request with retries and exponential backoff.
+        Make an API request with retries and exponential backoff.
+        Returns JSON response as a dict or list.
         """
         for attempt in range(1, retries + 1):
             try:
@@ -51,8 +56,18 @@ class ZillowClient:
                 if response.status_code == 200:
                     return response.json()
                 else:
-                    print(f"⚠️  Attempt {attempt}/{retries} failed - Status: {response.status_code}, Message: {response.text}")
+                    print(
+                        f"⚠️ Attempt {attempt}/{retries} failed - "
+                        f"Status: {response.status_code}, Message: {response.text}"
+                    )
             except requests.exceptions.RequestException as e:
                 print(f"❌ Request error on attempt {attempt}: {e}")
 
+            # Retry with exponential backoff
             if attempt < retries:
+                wait_time = backoff * attempt
+                print(f"⏳ Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+
+        print("❌ Max retries reached. No results fetched.")
+        return None
