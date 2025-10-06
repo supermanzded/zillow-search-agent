@@ -1,50 +1,66 @@
 import os
 import time
 import requests
-from dotenv import load_dotenv
-
-# ─────────────────────────────────────────── Load environment
-load_dotenv()
-
-RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
-RAPIDAPI_HOST = os.getenv("RAPIDAPI_HOST", "zillow-working-api.p.rapidapi.com")
-
+from typing import List, Dict, Optional
 
 class ZillowClient:
     def __init__(self):
-        if not RAPIDAPI_KEY:
-            raise ValueError("❌ RAPIDAPI_KEY not found in environment variables.")
-        print("ZillowClient (Working API) initialized and ready.")
-
-    def fetch_listings(self, location="Orlando, FL", zpid="44471319", retries=3, delay=5):
-        """
-        Fetch property data using Zillow Property ID (ZPID).
-        Extend later for multi-property or city-based search.
-        """
-        url = f"https://{RAPIDAPI_HOST}/custom_ag/byzpid"
-        params = {"zpid": zpid}
-        headers = {
-            "x-rapidapi-host": RAPIDAPI_HOST,
-            "x-rapidapi-key": RAPIDAPI_KEY,
+        self.api_key = os.getenv("RAPIDAPI_KEY")
+        self.api_host = os.getenv("RAPIDAPI_HOST")
+        self.base_url = f"https://{self.api_host}"
+        self.headers = {
+            "x-rapidapi-key": self.api_key,
+            "x-rapidapi-host": self.api_host
         }
 
+        if not self.api_key or not self.api_host:
+            raise ValueError("❌ Missing RAPIDAPI_KEY or RAPIDAPI_HOST in .env file")
+
+        print(f"ZillowClient initialized with host: {self.api_host}")
+
+    def fetch_listings(self, location: Optional[str] = None, zpid: Optional[str] = None) -> List[Dict]:
+        """
+        Fetch property listings using a Zillow zpid or fallback search.
+        """
+        if zpid:
+            url = f"{self.base_url}/custom_ag/byzpid"
+            params = {"zpid": zpid}
+        else:
+            # fallback example (if you want location search later)
+            url = f"{self.base_url}/custom_ag/bylocation"
+            params = {"location": location or "Orlando, FL"}
+
+        print(f"Fetching listings from: {url}")
+        listings = self._make_request(url, params)
+
+        if not listings:
+            print("⚠️  No data returned from API.")
+        else:
+            print(f"✅ Retrieved {len(listings) if isinstance(listings, list) else 1} listing(s).")
+
+        # Return list of dicts, even if single object
+        if isinstance(listings, dict):
+            listings = [listings]
+        return listings or []
+
+    def _make_request(self, url: str, params: Dict, retries: int = 3, backoff: int = 5) -> Optional[List[Dict]]:
+        """
+        Make API request with retries and graceful error handling.
+        """
         for attempt in range(1, retries + 1):
             try:
-                print(f"Fetching property info for ZPID={zpid} (attempt {attempt}) …")
-                response = requests.get(url, headers=headers, params=params, timeout=10)
-
+                response = requests.get(url, headers=self.headers, params=params, timeout=15)
                 if response.status_code == 200:
-                    print("✅ Zillow API call successful.")
-                    return [response.json()]  # list wrapper for report compatibility
-
-                print(f"⚠️  Status {response.status_code}: {response.text}")
-                if response.status_code == 403:
-                    print("❌  API subscription issue — check RapidAPI host or plan.")
-                time.sleep(delay * attempt)
-
+                    return response.json()
+                else:
+                    print(f"⚠️  Attempt {attempt}/{retries} failed - Status: {response.status_code}, Message: {response.text}")
             except requests.exceptions.RequestException as e:
-                print(f"❌ Network error: {e}")
-                time.sleep(delay * attempt)
+                print(f"❌ Request error on attempt {attempt}: {e}")
 
-        print("🚫 Max retries reached. No data retrieved.")
-        return []
+            if attempt < retries:
+                wait_time = backoff * attempt
+                print(f"⏳ Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+
+        print("❌ Max retries reached. No results fetched.")
+        return None
