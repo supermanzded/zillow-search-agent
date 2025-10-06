@@ -56,9 +56,3 @@ class ZillowClient:
                 print(f"❌ Request error on attempt {attempt}: {e}")
 
             if attempt < retries:
-                wait_time = backoff * attempt
-                print(f"⏳ Retrying in {wait_time} seconds...")
-                time.sleep(wait_time)
-
-        print("❌ Max retries reached. No results fetched.")
-        return None
