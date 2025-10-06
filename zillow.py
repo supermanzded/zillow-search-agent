@@ -1,61 +1,56 @@
 import os
-import requests
 import time
-from typing import List, Dict
+import requests
+
 
 class ZillowClient:
-    """
-    Fetch listings using the Realtor Search API `search-url` endpoint.
-    Includes automatic retries and exponential backoff for rate-limiting.
-    """
-    URL_SEARCH = "https://realtor-search.p.rapidapi.com/properties/search-url"
-    HOST       = "realtor-search.p.rapidapi.com"
-
-    def __init__(self) -> None:
-        key = os.getenv("RAPIDAPI_KEY")
-        if not key:
-            raise RuntimeError("RAPIDAPI_KEY environment variable not set")
-
+    def __init__(self):
+        self.api_key = os.getenv("RAPIDAPI_KEY")
+        self.base_url = "https://zillow-com1.p.rapidapi.com/propertyExtendedSearch"
         self.headers = {
-            "X-RapidAPI-Key":  key,
-            "X-RapidAPI-Host": self.HOST,
+            "x-rapidapi-host": "zillow-com1.p.rapidapi.com",
+            "x-rapidapi-key": self.api_key
         }
-        print("ZillowClient (Realtor Search API) ready for URL searches.")
 
-    def search_by_url(self, url: str, retries: int = 3, delay: int = 2) -> List[Dict]:
+        if not self.api_key:
+            print("❌ RAPIDAPI_KEY missing from environment variables.")
+        else:
+            print("ZillowClient (Realtor Search API) ready for URL searches.")
+
+    def search_by_url(self, params: dict, retries: int = 3, delay: int = 5):
         """
-        Fetch listings from a Realtor.com search URL with automatic retries.
-        retries: number of attempts if rate-limited
-        delay: initial wait time in seconds, doubles each retry (exponential backoff)
+        Calls Zillow property search via RapidAPI with exponential backoff and detailed error logging.
+        Returns a list of property dictionaries.
         """
-        params = {"url": url}
+        if not self.api_key:
+            print("❌ No API key found; aborting Zillow search.")
+            return []
 
         for attempt in range(1, retries + 1):
             try:
-                resp = requests.get(self.URL_SEARCH, headers=self.headers, params=params, timeout=30)
+                resp = requests.get(self.base_url, headers=self.headers, params=params, timeout=20)
+
+                # Handle success
                 if resp.status_code == 200:
-                    payload = resp.json()
-                    data = payload.get("data")
-                    if not data or "results" not in data:
-                        print(f"⚠️ No results for URL='{url}':", payload)
+                    data = resp.json()
+                    if "props" in data and data["props"]:
+                        return data["props"]
+                    else:
+                        print("⚠️  Zillow API returned no property data.")
                         return []
-                    results = data["results"]
-                    print(f"✅ URL search successful: {len(results)} listings found")
-                    return results
 
-                elif resp.status_code in [429, 400]:
-                    print(f"⚠️ Rate limited or bad request. Attempt {attempt}/{retries}. Retrying in {delay} sec...")
-                    time.sleep(delay)
-                    delay *= 2  # exponential backoff
-
+                # Handle errors
                 else:
-                    print(f"❌ HTTP {resp.status_code}: {resp.text[:200]}")
-                    resp.raise_for_status()
+                    print(f"⚠️  Attempt {attempt}/{retries} failed - "
+                          f"Status: {resp.status_code}, Message: {resp.text[:250]}")
 
-            except requests.exceptions.RequestException as e:
-                print(f"❌ Request exception: {e}. Attempt {attempt}/{retries}. Retrying in {delay} sec...")
+            except Exception as e:
+                print(f"❌  Exception on attempt {attempt}: {e}")
+
+            if attempt < retries:
+                print(f"⏳  Retrying in {delay} seconds...")
                 time.sleep(delay)
                 delay *= 2
 
-        print("❌ Max retries reached. No results fetched.")
+        print("❌  Max retries reached. No results fetched.")
         return []
