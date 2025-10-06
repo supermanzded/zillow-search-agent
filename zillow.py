@@ -8,50 +8,40 @@ load_dotenv()
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
 RAPIDAPI_HOST = os.getenv("RAPIDAPI_HOST", "zillow-working-api.p.rapidapi.com")
 
+
 class ZillowClient:
     def __init__(self):
         if not RAPIDAPI_KEY:
-            raise ValueError("RAPIDAPI_KEY not found in .env")
+            raise ValueError("❌ RAPIDAPI_KEY not found in environment.")
         print("ZillowClient (Working API) initialized and ready.")
 
-    def fetch_listings(self, location="Orlando, FL", max_retries=3):
+    def fetch_listings(self, location="Orlando, FL", zpid="44471319", retries=3, delay=5):
+        """
+        Fetch property data by Zillow Property ID (ZPID)
+        You can expand this later to do real searches if the API supports it.
+        """
         url = f"https://{RAPIDAPI_HOST}/custom_ag/byzpid"
-        # Example test zpid; real searches would need different endpoints
-        params = {"zpid": "44471319"}
+        params = {"zpid": zpid}
         headers = {
             "x-rapidapi-host": RAPIDAPI_HOST,
             "x-rapidapi-key": RAPIDAPI_KEY,
         }
 
-        for attempt in range(1, max_retries + 1):
+        for attempt in range(1, retries + 1):
             try:
-                print(f"Fetching data (attempt {attempt}) from {RAPIDAPI_HOST} …")
+                print(f"Fetching property info for ZPID={zpid} (attempt {attempt}) …")
                 response = requests.get(url, headers=headers, params=params, timeout=10)
 
                 if response.status_code == 200:
                     print("✅ Zillow API call successful.")
-                    return response.json()
+                    return [response.json()]  # wrap in list to fit 'listings' expected by main.py
 
-                else:
-                    print(f"⚠️  Status {response.status_code}: {response.text}")
-                    if response.status_code == 403:
-                        print("❌ You may not be subscribed to this endpoint or used the wrong host.")
-                    time.sleep(attempt * 5)
+                print(f"⚠️  Status {response.status_code}: {response.text}")
+                time.sleep(delay * attempt)
 
             except requests.exceptions.RequestException as e:
                 print(f"❌ Network error: {e}")
-                time.sleep(attempt * 5)
+                time.sleep(delay * attempt)
 
         print("🚫 Max retries reached. No data retrieved.")
-        return None
-
-
-if __name__ == "__main__":
-    client = ZillowClient()
-    data = client.fetch_listings()
-
-    if data:
-        print("Sample data retrieved:")
-        print(data)
-    else:
-        print("No listings returned.")
+        return []
