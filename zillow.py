@@ -1,97 +1,57 @@
 import os
 import time
 import requests
+from dotenv import load_dotenv
 
+load_dotenv()
+
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY")
+RAPIDAPI_HOST = os.getenv("RAPIDAPI_HOST", "zillow-working-api.p.rapidapi.com")
 
 class ZillowClient:
-    """
-    ZillowClient connects to the Zillow RapidAPI endpoint.
-    Provides robust logging, error handling, and exponential backoff.
-    """
-
     def __init__(self):
-        self.api_key = os.getenv("RAPIDAPI_KEY")
-        self.base_url = "https://zillow-com1.p.rapidapi.com/propertyExtendedSearch"
-        self.headers = {
-            "x-rapidapi-host": "zillow-com1.p.rapidapi.com",
-            "x-rapidapi-key": self.api_key
+        if not RAPIDAPI_KEY:
+            raise ValueError("RAPIDAPI_KEY not found in .env")
+        print("ZillowClient (Working API) initialized and ready.")
+
+    def fetch_listings(self, location="Orlando, FL", max_retries=3):
+        url = f"https://{RAPIDAPI_HOST}/custom_ag/byzpid"
+        # Example test zpid; real searches would need different endpoints
+        params = {"zpid": "44471319"}
+        headers = {
+            "x-rapidapi-host": RAPIDAPI_HOST,
+            "x-rapidapi-key": RAPIDAPI_KEY,
         }
 
-        if not self.api_key:
-            print("❌ RAPIDAPI_KEY missing from environment variables.")
-        else:
-            print("ZillowClient (Realtor Search API) ready for URL searches.")
-
-    # ─────────────────────────────────────────── Zillow API Call
-    def search_by_url(self, params: dict, retries: int = 3, delay: int = 5):
-        """
-        Calls Zillow property search via RapidAPI with exponential backoff and detailed error logging.
-        Returns a list of property dictionaries if successful.
-        """
-        if not self.api_key:
-            print("❌ No API key found; aborting Zillow search.")
-            return []
-
-        url = self.base_url
-        print(f"🔍 Querying Zillow API: {url}")
-        print(f"🔧 Parameters: {params}")
-
-        for attempt in range(1, retries + 1):
+        for attempt in range(1, max_retries + 1):
             try:
-                resp = requests.get(url, headers=self.headers, params=params, timeout=20)
+                print(f"Fetching data (attempt {attempt}) from {RAPIDAPI_HOST} …")
+                response = requests.get(url, headers=headers, params=params, timeout=10)
 
-                print(f"🔹 HTTP {resp.status_code}")
-                if resp.status_code != 200:
-                    # Show partial response for easier debugging
-                    print(f"🔸 Response text: {resp.text[:500]}")
+                if response.status_code == 200:
+                    print("✅ Zillow API call successful.")
+                    return response.json()
 
-                # ─────────────────────────── Successful response
-                if resp.status_code == 200:
-                    try:
-                        data = resp.json()
-                    except Exception as e:
-                        print(f"❌ Failed to parse JSON: {e}")
-                        print(f"Raw text: {resp.text[:500]}")
-                        return []
-
-                    if "props" in data and isinstance(data["props"], list):
-                        print(f"✅ Zillow returned {len(data['props'])} properties.")
-                        return data["props"]
-
-                    # If response shape changed
-                    print(f"⚠️  Unexpected JSON keys: {list(data.keys())}")
-                    if "message" in data:
-                        print(f"⚠️  Message from API: {data['message']}")
-                    return []
+                else:
+                    print(f"⚠️  Status {response.status_code}: {response.text}")
+                    if response.status_code == 403:
+                        print("❌ You may not be subscribed to this endpoint or used the wrong host.")
+                    time.sleep(attempt * 5)
 
             except requests.exceptions.RequestException as e:
-                print(f"❌ Network error on attempt {attempt}: {e}")
+                print(f"❌ Network error: {e}")
+                time.sleep(attempt * 5)
 
-            # ─────────────────────────── Retry handling
-            if attempt < retries:
-                print(f"⏳ Retrying in {delay} seconds...")
-                time.sleep(delay)
-                delay *= 2  # exponential backoff
-
-        print("❌ Max retries reached. No results fetched.")
-        return []
+        print("🚫 Max retries reached. No data retrieved.")
+        return None
 
 
-# ─────────────────────────────────────────── Manual test
 if __name__ == "__main__":
-    """
-    Run this file directly to test your RapidAPI connection without main.py.
-    """
-    from dotenv import load_dotenv
-    load_dotenv()
-
     client = ZillowClient()
+    data = client.fetch_listings()
 
-    payload = {
-        "location": "Orlando, FL",
-        "status_type": "ForSale",
-        "page": 1
-    }
-
-    results = client.search_by_url(payload, retries=2, delay=5)
-    print(f"\n🔎 Test complete. Results fetched: {len(results)}")
+    if data:
+        print("Sample data retrieved:")
+        print(data)
+    else:
+        print("No listings returned.")
