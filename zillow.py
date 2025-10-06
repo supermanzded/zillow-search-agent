@@ -18,34 +18,32 @@ class ZillowClient:
 
         print(f"ZillowClient initialized with host: {self.api_host}")
 
-    def fetch_listings(self, location: Optional[str] = None, zpid: Optional[str] = None) -> List[Dict]:
+    def fetch_listings(self, zpid: str) -> List[Dict]:
         """
-        Fetch property listings using a Zillow zpid or fallback search.
+        Fetch property listing using a Zillow ZPID.
         """
-        if zpid:
-            url = f"{self.base_url}/custom_ag/byzpid"
-            params = {"zpid": zpid}
-        else:
-            # fallback example (if you want location search later)
-            url = f"{self.base_url}/custom_ag/bylocation"
-            params = {"location": location or "Orlando, FL"}
+        if not zpid:
+            raise ValueError("❌ ZPID is required for this API call.")
+
+        url = f"{self.base_url}/pro/byzpid"
+        params = {"zpid": zpid}
 
         print(f"Fetching listings from: {url}")
         listings = self._make_request(url, params)
 
+        if isinstance(listings, dict):
+            listings = [listings]
+
         if not listings:
             print("⚠️  No data returned from API.")
         else:
-            print(f"✅ Retrieved {len(listings) if isinstance(listings, list) else 1} listing(s).")
+            print(f"✅ Retrieved {len(listings)} listing(s).")
 
-        # Return list of dicts, even if single object
-        if isinstance(listings, dict):
-            listings = [listings]
         return listings or []
 
     def _make_request(self, url: str, params: Dict, retries: int = 3, backoff: int = 5) -> Optional[List[Dict]]:
         """
-        Make API request with retries and graceful error handling.
+        Make API request with retries and exponential backoff.
         """
         for attempt in range(1, retries + 1):
             try:
