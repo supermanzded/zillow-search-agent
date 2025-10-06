@@ -41,32 +41,20 @@ def job() -> None:
     print("🚀 Starting Zillow Report Job (API payload search)")
     client = ZillowClient()
 
-    search_payload = {
-        "city": "Orlando",
-        "state_code": "FL",
-        "page": 1,
-        "filters": {
-            "propertyType": {"type": ["multi_family"]},
-            "price": {"min": 200000, "max": 400000},
-            "bed": {"min": 2},
-            "bath": {"min": 1}
-        }
-    }
-
-    print(f"Fetching listings for {search_payload['city']}, {search_payload['state_code']} …")
-
-    listings = client.fetch_listings(location=f"{search_payload['city']}, {search_payload['state_code']}")
+    # single property for now (you can extend this to multiple zpid lookups)
+    zpid = "44471319"
+    listings = client.fetch_listings(location="Orlando, FL", zpid=zpid)
 
     if not listings:
         print("⚠️  No listings retrieved, skipping report generation.")
         return
 
-    print("✅ Listings data retrieved successfully.")
+    print(f"✅ Listings retrieved: {len(listings)}")
     filepath = generate_excel_report(listings)
 
     if filepath:
         subject = "Weekly Zillow Property Report"
-        body = f"Attached is the latest report."
+        body = f"Attached is the latest Zillow report with {len(listings)} listings."
         recipient = os.getenv("REPORT_RECIPIENT") or os.getenv("GMAIL_USER")
         send_email(subject, body, filepath, recipient)
     else:
