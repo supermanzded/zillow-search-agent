@@ -1,26 +1,39 @@
 import os
 import pandas as pd
-import json
 
 def _flatten_listing(item: dict) -> dict:
     """Convert one raw listing dict from the API into a flat row."""
-    # Debug: Print first item structure
-    print("DEBUG - Sample listing keys:", list(item.keys())[:10])
-    print("DEBUG - First item structure:", json.dumps(item, indent=2)[:500])
+    # The actual data is nested under 'property'
+    prop = item.get("property", {})
+    addr = prop.get("address", {})
     
-    addr     = item.get("location", {}).get("address", {})
-    descr    = item.get("description", {})
+    # Get price - it's in listingSubType object
+    listing_sub = prop.get("listingSubType", {})
+    price = prop.get("price")  # Try direct price first
+    if not price:
+        price = listing_sub.get("price")  # Or from listingSubType
+    
+    # Get beds/baths from bedrooms/bathrooms fields
+    beds = prop.get("bedrooms")
+    baths = prop.get("bathrooms")
+    
+    # Get property type
+    prop_type = prop.get("propertyType") or prop.get("homeType")
+    
+    # Build URL from zpid
+    zpid = prop.get("zpid")
+    url = f"https://www.zillow.com/homedetails/{zpid}_zpid/" if zpid else None
     
     return {
-        "Price":         item.get("list_price"),
-        "Beds":          descr.get("beds"),
-        "Baths":         descr.get("baths"),
-        "Address":       addr.get("line"),
-        "City":          addr.get("city"),
-        "State":         addr.get("state_code"),
-        "ZIP":           addr.get("postal_code"),
-        "Property Type": descr.get("type") or item.get("prop_type"),
-        "URL":           item.get("href"),
+        "Price": price,
+        "Beds": beds,
+        "Baths": baths,
+        "Address": addr.get("streetAddress"),
+        "City": addr.get("city"),
+        "State": addr.get("state"),
+        "ZIP": addr.get("zipcode"),
+        "Property Type": prop_type,
+        "URL": url,
     }
 
 def generate_excel_report(data, filepath: str = "zillow_report.xlsx") -> str | None:
@@ -29,13 +42,7 @@ def generate_excel_report(data, filepath: str = "zillow_report.xlsx") -> str | N
         print("⚠️  No data to write. Excel file will not be generated.")
         return None
     
-    print(f"DEBUG - Total items received: {len(data)}")
-    print(f"DEBUG - First item type: {type(data[0])}")
-    
     rows = [_flatten_listing(item) for item in data]
-    
-    print(f"DEBUG - First flattened row: {rows[0]}")
-    
     df = pd.DataFrame(rows)
     
     # ensure consistent order
