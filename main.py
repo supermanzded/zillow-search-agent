@@ -44,7 +44,7 @@ HEADERS = {
 
 
 def fetch_listings(params: dict, max_retries: int = 3, delay: int = 5) -> list:
-    url = f"https://{RAPIDAPI_HOST}/search/bycoordinates"
+    url = f"https://real-time-zillow-data.p.rapidapi.com/search-coordinates?long=-118.504744&lat=34.01822&diameter=1.0&home_status=FOR_SALE&sort=DEFAULT&listing_type=BY_AGENT"
     for attempt in range(1, max_retries + 1):
         try:
             response = requests.get(url, headers=HEADERS, params=params)
