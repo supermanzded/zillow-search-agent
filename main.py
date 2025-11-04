@@ -20,14 +20,14 @@ REPORT_RECIPIENT = os.getenv("REPORT_RECIPIENT") or GMAIL_USER
 SEARCH_PARAMS = {
     "latitude": "28.5383",
     "longitude": "-81.3792",
-    "radius": "50",  # miles
+    "radius": "50",
     "page": "1",
     "sortOrder": "Homes_for_you",
     "listingStatus": "For_Sale",
     "bed_min": "No_Min",
     "bed_max": "No_Max",
     "bathrooms": "Any",
-    "homeType": "Multi-family",  # duplexes
+    "homeType": "Multi-family",
     "maxHOA": "Any",
     "listingType": "By_Agent",
     "listingTypeOptions": "Agent listed,New Construction,Fore-closures,Auctions",
@@ -44,7 +44,6 @@ HEADERS = {
 
 
 def fetch_listings(params: dict, max_retries: int = 3, delay: int = 5) -> list:
-    # Use base URL only, let requests library add params
     url = "https://zillow-working-api.p.rapidapi.com/search/bycoordinates"
     
     for attempt in range(1, max_retries + 1):
@@ -53,7 +52,7 @@ def fetch_listings(params: dict, max_retries: int = 3, delay: int = 5) -> list:
             response = requests.get(url, headers=HEADERS, params=params)
             
             print(f"📡 Response Status: {response.status_code}")
-            print(f"🔗 Request URL: {response.url}")  # Debug: see actual URL
+            print(f"🔗 Request URL: {response.url}")
             
             if response.status_code == 200:
                 data = response.json()
@@ -101,7 +100,7 @@ def send_email(subject: str, body: str, attachment_path: str, to_email: str) -> 
 
 def job() -> None:
     print("🚀 Starting Zillow Report Job (Orlando Duplex Search)")
-    print(f"🔑 Using API Key: {RAPIDAPI_KEY[:10]}...{RAPIDAPI_KEY[-10:]}")  # Debug output
+    print(f"🔑 Using API Key: {RAPIDAPI_KEY[:10]}...{RAPIDAPI_KEY[-10:]}")
     
     listings = fetch_listings(SEARCH_PARAMS)
 
@@ -109,7 +108,6 @@ def job() -> None:
         print("⚠️  No listings retrieved, skipping report generation.")
         return
 
-    # Generate Excel report
     filepath = generate_excel_report(listings)
     if filepath:
         subject = f"Weekly Zillow Orlando Duplex Report ({len(listings)} listings)"
@@ -121,9 +119,3 @@ def job() -> None:
 
 if __name__ == "__main__":
     job()
-```
-
-**Key changes:**
-
-```
-GMAIL_PASS=riywflzgnwwwduzq
