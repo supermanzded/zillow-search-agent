@@ -8,10 +8,8 @@ def _flatten_listing(item: dict) -> dict:
     addr = prop.get("address", {})
     
     # Get price - it's in listingSubType object
-    listing_sub = prop.get("listingSubType", {})
-    price = prop.get("price")  # Try direct price first
-    if not price:
-        price = listing_sub.get("price")  # Or from listingSubType
+    price_obj = prop.get("price")
+    price = price_obj.get("value") if isinstance(price_obj, dict) else price_obj
     
     # Get beds/baths from bedrooms/bathrooms fields
     beds = prop.get("bedrooms")
