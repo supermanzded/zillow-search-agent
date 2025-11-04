@@ -44,7 +44,7 @@ HEADERS = {
 
 
 def fetch_listings(params: dict, max_retries: int = 3, delay: int = 5) -> list:
-    url = f"https://real-time-zillow-data.p.rapidapi.com/search-coordinates?long=-118.504744&lat=34.01822&diameter=1.0&home_status=FOR_SALE&sort=DEFAULT&listing_type=BY_AGENT"
+    url = f"https://zillow-working-api.p.rapidapi.com/search/bycoordinates?latitude=40.599283&longitude=-74.129194&radius=0.5&page=1&sortOrder=Homes_for_you&listingStatus=For_Sale&bed_min=No_Min&bed_max=No_Max&bathrooms=Any&homeType=Houses%2C%20Townhomes%2C%20Multi-family%2C%20Condos%2FCo-ops%2C%20Lots-Land%2C%20Apartments%2C%20Manufactured&maxHOA=Any&listingType=By_Agent&listingTypeOptions=Agent%20listed%2CNew%20Construction%2CFore-closures%2CAuctions&parkingSpots=Any&mustHaveBasement=No&daysOnZillow=Any&soldInLast=Any"
     for attempt in range(1, max_retries + 1):
         try:
             response = requests.get(url, headers=HEADERS, params=params)
