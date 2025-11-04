@@ -18,10 +18,10 @@ REPORT_RECIPIENT = os.getenv("REPORT_RECIPIENT") or GMAIL_USER
 
 # Parameters for Orlando duplex search
 SEARCH_PARAMS = {
-    "latitude": 28.5383,
-    "longitude": -81.3792,
-    "radius": 50,  # miles
-    "page": 1,
+    "latitude": "28.5383",
+    "longitude": "-81.3792",
+    "radius": "50",  # miles
+    "page": "1",
     "sortOrder": "Homes_for_you",
     "listingStatus": "For_Sale",
     "bed_min": "No_Min",
@@ -44,21 +44,31 @@ HEADERS = {
 
 
 def fetch_listings(params: dict, max_retries: int = 3, delay: int = 5) -> list:
-    url ="https://zillow-working-api.p.rapidapi.com/search/bycoordinates"
+    # Use base URL only, let requests library add params
+    url = "https://zillow-working-api.p.rapidapi.com/search/bycoordinates"
     
     for attempt in range(1, max_retries + 1):
         try:
+            print(f"🔍 Attempt {attempt} - Making API request...")
             response = requests.get(url, headers=HEADERS, params=params)
+            
+            print(f"📡 Response Status: {response.status_code}")
+            print(f"🔗 Request URL: {response.url}")  # Debug: see actual URL
+            
             if response.status_code == 200:
                 data = response.json()
                 results = data.get("searchResults", [])
                 print(f"✅ Retrieved {len(results)} listings.")
                 return results
             else:
-                print(f"⚠️ Attempt {attempt} failed - Status: {response.status_code}, Message: {response.text}")
+                print(f"⚠️ Attempt {attempt} failed - Status: {response.status_code}")
+                print(f"Response: {response.text}")
         except Exception as e:
             print(f"⚠️ Attempt {attempt} exception: {e}")
-        time.sleep(delay * attempt)
+        
+        if attempt < max_retries:
+            time.sleep(delay * attempt)
+    
     print("❌ Max retries reached. No results fetched.")
     return []
 
@@ -91,6 +101,8 @@ def send_email(subject: str, body: str, attachment_path: str, to_email: str) -> 
 
 def job() -> None:
     print("🚀 Starting Zillow Report Job (Orlando Duplex Search)")
+    print(f"🔑 Using API Key: {RAPIDAPI_KEY[:10]}...{RAPIDAPI_KEY[-10:]}")  # Debug output
+    
     listings = fetch_listings(SEARCH_PARAMS)
 
     if not listings:
@@ -109,3 +121,9 @@ def job() -> None:
 
 if __name__ == "__main__":
     job()
+```
+
+**Key changes:**
+
+```
+GMAIL_PASS=riywflzgnwwwduzq
